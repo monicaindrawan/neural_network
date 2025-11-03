@@ -93,6 +93,7 @@ class CrossEntropyLossLayer(Layer):
         return -1 / n_obs * (y_target - probs)
 
 
+##### Max ######
 class SigmoidLayer(Layer):
     """
     SigmoidLayer: Applies sigmoid function elementwise.
@@ -150,6 +151,7 @@ class SigmoidLayer(Layer):
         #######################################################################
 
 
+##### Winston ######
 class ReluLayer(Layer):
     """
     ReluLayer: Applies Relu function elementwise.
@@ -207,6 +209,7 @@ class ReluLayer(Layer):
         #######################################################################
 
 
+# ##### Luke ######
 class LinearLayer(Layer):
     """
     LinearLayer: Performs affine transformation of input.
@@ -300,6 +303,7 @@ class LinearLayer(Layer):
         #######################################################################
 
 
+# ##### Monica Winston ######
 class MultiLayerNetwork:
     """
     MultiLayerNetwork: A network consisting of stacked linear layers and
@@ -313,8 +317,8 @@ class MultiLayerNetwork:
         Arguments:
             - input_dim {int} -- Number of features in the input (excluding 
                 the batch dimension).
-            - neurons {list} -- Number of neurons in each linear layer 
-                represented as a list. The length of the list determines the 
+            - neurons {list} -- Number of neurons in each linear layer 
+                represented as a list. The length of the list determines the 
                 number of linear layers.
             - activations {list} -- List of the activation functions to apply 
                 to the output of each linear layer.
@@ -410,6 +414,7 @@ def load_network(fpath):
     return network
 
 
+# ##### Luke ######
 class Trainer:
     """
     Trainer: Object that manages the training of a neural network.
@@ -529,6 +534,7 @@ class Trainer:
         #######################################################################
 
 
+# ##### Max ######
 class Preprocessor:
     """
     Preprocessor: Object used to apply "preprocessing" operation to datasets.
