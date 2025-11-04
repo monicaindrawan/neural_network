@@ -113,7 +113,7 @@ class SigmoidLayer(Layer):
 
         Returns:
             {np.ndarray} -- Output array of shape (batch_size, n_out)
-            
+
         """
         return 1.0 / (1.0 + np.exp(-x))
 
@@ -568,7 +568,8 @@ class Preprocessor:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self.x_max = data.max(axis = 0)
+        self.x_min = data.min(axis = 0)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -587,7 +588,8 @@ class Preprocessor:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        normalised_data = (data - self.x_min)/(self.x_max - self.x_min)
+        return normalised_data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -606,7 +608,8 @@ class Preprocessor:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        original_data = self.x_min + data * (self.x_max - self.x_min)
+        return original_data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
