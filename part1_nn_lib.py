@@ -105,6 +105,18 @@ class SigmoidLayer(Layer):
         """
         self._cache_current = None
 
+    def sigmoid(self, x):
+        """ Performs sigmoid function on input x.
+
+        Arguments:
+            x {np.ndarray} -- Input array of shape (batch_size, n_in).
+
+        Returns:
+            {np.ndarray} -- Output array of shape (batch_size, n_out)
+
+        """
+        return 1.0 / (1.0 + np.exp(-x))
+
     def forward(self, x):
         """ 
         Performs forward pass through the Sigmoid layer.
@@ -121,7 +133,9 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self._cache_current = self.sigmoid(x)
+        return self._cache_current
+
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -144,7 +158,8 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        dLdx = grad_z * sigmoid(self._cache_current)*(1-sigmoid(self._cache_current))
+        return dLdx
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -562,7 +577,8 @@ class Preprocessor:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self.x_max = data.max(axis = 0)
+        self.x_min = data.min(axis = 0)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -581,7 +597,8 @@ class Preprocessor:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        normalised_data = (data - self.x_min)/(self.x_max - self.x_min)
+        return normalised_data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -600,7 +617,8 @@ class Preprocessor:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        original_data = self.x_min + data * (self.x_max - self.x_min)
+        return original_data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
