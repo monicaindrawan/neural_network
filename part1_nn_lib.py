@@ -229,12 +229,13 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W = None
-        self._b = None
+        # Xavier initialisation of weights
+        self._W = np.random.randn(self.n_in, self.n_out) * np.sqrt(1. / self.n_in)
+        self._b = np.zeros(self.n_in, self.n_out)
 
-        self._cache_current = None
-        self._grad_W_current = None
-        self._grad_b_current = None
+        self._cache_current = np.zeros(self.n_out)
+        self._grad_W_current = np.zeros(self.n_in, self.n_out)
+        self._grad_b_current = np.zeros(1, self.n_out)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -256,7 +257,11 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self._cache_current = x
+
+        z = self._W @ x + self._b
+        
+        return z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -279,7 +284,10 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self._grad_W_current = self._cache_current.T @ grad_z
+        self._grad_b_current = grad_z
+
+        return self._cache_current.T @ grad_z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -296,7 +304,8 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self._W -= self._grad_W_current * learning_rate
+        self._b -= self._grad_b_current * learning_rate
 
         #######################################################################
         #                       ** END OF YOUR CODE **
