@@ -257,13 +257,13 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        # Xavier initialisation of weights
-        self._W = np.random.randn(self.n_out, self.n_in) * np.sqrt(1. / self.n_in)
-        self._b = np.random.randn(self.n_out, 1)
+        # ()
+        self._W = xavier_init((n_in, n_out))
+        self._b = np.zeros(n_out)
 
-        self._cache_current = np.zeros(self.n_out)
-        self._grad_W_current = np.zeros((self.n_out, self.n_in))
-        self._grad_b_current = np.zeros((self.n_out, 1))
+        self._cache_current = None
+        self._grad_W_current = None
+        self._grad_b_current = None
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -287,9 +287,7 @@ class LinearLayer(Layer):
         #######################################################################
         self._cache_current = x
 
-        z = self._W @ x + self._b
-        
-        return z
+        return x @ self._W + self._b
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -312,10 +310,12 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._grad_W_current = self._cache_current.T @ grad_z
-        self._grad_b_current = grad_z.sum(axis=1)
+        x = self._cache_current
+        self._grad_W_current = x.T @ grad_z
+        self._grad_b_current = np.sum(grad_z, axis=0)
 
-        return self._cache_current.T @ grad_z
+        grad_x = grad_z @ self._W.T
+        return grad_x
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -332,8 +332,8 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W -= self._grad_W_current * learning_rate
-        self._b -= self._grad_b_current * learning_rate
+        self._W -= learning_rate * self._grad_W_current
+        self._b -= learning_rate * self._grad_b_current
 
         #######################################################################
         #                       ** END OF YOUR CODE **
