@@ -158,7 +158,7 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        dLdx = grad_z * sigmoid(self._cache_current)*(1-sigmoid(self._cache_current))
+        dLdx = grad_z * self.sigmoid(self._cache_current)*(1-self.sigmoid(self._cache_current))
         return dLdx
 
         #######################################################################
@@ -245,12 +245,12 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         # Xavier initialisation of weights
-        self._W = np.random.randn(self.n_in, self.n_out) * np.sqrt(1. / self.n_in)
-        self._b = np.zeros(self.n_in, self.n_out)
+        self._W = np.random.randn(self.n_out, self.n_in) * np.sqrt(1. / self.n_in)
+        self._b = np.random.randn(self.n_out, 1)
 
         self._cache_current = np.zeros(self.n_out)
-        self._grad_W_current = np.zeros(self.n_in, self.n_out)
-        self._grad_b_current = np.zeros(1, self.n_out)
+        self._grad_W_current = np.zeros((self.n_out, self.n_in))
+        self._grad_b_current = np.zeros((self.n_out, 1))
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -300,7 +300,7 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         self._grad_W_current = self._cache_current.T @ grad_z
-        self._grad_b_current = grad_z
+        self._grad_b_current = grad_z.sum(axis=1)
 
         return self._cache_current.T @ grad_z
 
@@ -373,6 +373,7 @@ class MultiLayerNetwork:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
         return np.zeros((1, self.neurons[-1])) # Replace with your own code
 
         #######################################################################
