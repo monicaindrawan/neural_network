@@ -367,7 +367,17 @@ class MultiLayerNetwork:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._layers = None
+        
+        self._layers = []
+        n_in = input_dim
+        for index, neuron in enumerate(self.neurons):
+            self._layers.append(LinearLayer(n_in=n_in, n_out=neuron))
+            if self.activations[index] == "sigmoid":
+                self._layers.append(SigmoidLayer())
+            if self.activations[index] == "relu":
+                self._layers.append(ReluLayer())
+            n_in = neuron
+                               
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -386,8 +396,11 @@ class MultiLayerNetwork:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
-        return np.zeros((1, self.neurons[-1])) # Replace with your own code
+        
+        for layer in self._layers:
+            z = layer.forward(x)
+            x = z
+        return z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -411,7 +424,10 @@ class MultiLayerNetwork:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        for layer in self._layers[::-1]:
+            grad_x = layer.backward(grad_z)
+            grad_z = grad_x
+        return grad_x
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -428,7 +444,8 @@ class MultiLayerNetwork:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        for layer in self._layers:
+            layer.update_params(learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
