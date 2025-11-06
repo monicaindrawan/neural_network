@@ -158,7 +158,8 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        dLdx = grad_z * self.sigmoid(self._cache_current)*(1-self.sigmoid(self._cache_current))
+        z = self._cache_current
+        dLdx = grad_z * z * (1 - z)
         return dLdx
 
         #######################################################################
@@ -224,10 +225,7 @@ class ReluLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
-        if self._cache_current > 0:
-            dfdx = 1
-        else:
-            dfdx = 0
+        dfdx = (self._cache_current > 0).astype(float)
 
         dLdX = grad_z * dfdx
         return dLdX
