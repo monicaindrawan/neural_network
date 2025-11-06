@@ -178,9 +178,9 @@ class ReluLayer(Layer):
         """
         self._cache_current = None
 
-    def relu(x):
+    def relu(self, x):
         
-        return np.max(0, x)
+        return np.maximum(0, x)
     
         
     def forward(self, x):
