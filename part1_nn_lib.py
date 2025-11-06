@@ -367,6 +367,10 @@ class MultiLayerNetwork:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+        # Check if activations and neurons length match
+        if len(self.neurons) != len(self.activations):
+            raise ValueError("Neuron and Activation dimensions do not match")
         
         self._layers = []
         n_in = input_dim
@@ -376,6 +380,8 @@ class MultiLayerNetwork:
                 self._layers.append(SigmoidLayer())
             if self.activations[index] == "relu":
                 self._layers.append(ReluLayer())
+            if self.activations[index] == "identity":
+                pass
             n_in = neuron
                                
         #######################################################################
@@ -469,7 +475,7 @@ def load_network(fpath):
     return network
 
 
-# ##### Luke ######
+# ##### Luke but actually Monica ######
 class Trainer:
     """
     Trainer: Object that manages the training of a neural network.
@@ -507,7 +513,11 @@ class Trainer:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._loss_layer = None
+        if self.loss_fun == "cross_entropy":
+            self._loss_layer = CrossEntropyLossLayer()
+        if self.loss_fun == "mse":
+            self._loss_layer = MSELossLayer()
+            
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -530,7 +540,10 @@ class Trainer:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        shuffled_indices = np.random.default_rng().permutation(len(input_dataset))
+        input_dataset = input_dataset[shuffled_indices]
+        target_dataset = target_dataset[shuffled_indices]
+        return (input_dataset, target_dataset)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -559,7 +572,24 @@ class Trainer:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+
+        for epoch in range(self.nb_epoch):
+            loss = 0
+            if self.shuffle_flag:
+                input_dataset, target_dataset = self.shuffle(input_dataset, target_dataset)
+            for i in range(0, len(input_dataset), self.batch_size):
+                input_mini_batch = input_dataset[i : i+self.batch_size, :]
+                target_mini_batch = target_dataset[i : i+self.batch_size, :]
+
+                y_hat = self.network.forward(input_mini_batch)
+                loss += self._loss_layer.forward(y_hat, target_mini_batch)
+
+                grad_z = self._loss_layer.backward()
+                grad_x = self.network.backward(grad_z)
+
+                self.network.update_params(self.learning_rate)
+            
+            print(loss)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -582,11 +612,16 @@ class Trainer:
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        y_prediction = self.network.forward(input_dataset)
+        loss = self._loss_layer.forward(y_prediction, target_dataset)
+
+        return loss
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
 
 
 # ##### Max ######
