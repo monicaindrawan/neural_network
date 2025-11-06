@@ -574,7 +574,7 @@ class Trainer:
         for epoch in range(self.nb_epoch):
             loss = 0
             if self.shuffle_flag:
-                self.shuffle(input_dataset, target_dataset)
+                input_dataset, target_dataset = self.shuffle(input_dataset, target_dataset)
             for i in range(0, len(input_dataset), self.batch_size):
                 input_mini_batch = input_dataset[i : i+self.batch_size, :]
                 target_mini_batch = target_dataset[i : i+self.batch_size, :]
