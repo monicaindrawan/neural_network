@@ -243,7 +243,7 @@ def load_regressor():
 
 
 
-def perform_hyperparameter_search(): 
+def perform_hyperparameter_search(x, y, hyperparams): 
     # Ensure to add whatever inputs you deem necessary to this function
     """
     Performs a hyper-parameter for fine-tuning the regressor implemented 
@@ -260,8 +260,57 @@ def perform_hyperparameter_search():
     #######################################################################
     #                       ** START OF YOUR CODE **
     #######################################################################
+    
+    #hyperparams = {"nb_epoch": [10, 100, 500], 
+                  # "hidden_size": [64, 128, 256]}
+    """
+    class Sklearnregressor:
+        def __init__(self, nb_epoch=10, hidden_size=64):
+            self.nb_epoch = nb_epoch
+            self.hidden_size = hidden_size
+        
+        def fit(self, x, y):
+            self.loss_function = torch.nn.MSELoss()
+            self.optimiser = torch.optim.Adam(self.parameters(), lr=0.01)
+            self.model = Regressor(x_train, nb_epoch=10, hidden_size=self.hidden_size)
+            self.model.fit(x,y)
+            return self
 
-    return  # Return the chosen hyper parameters
+        def predict(self, x):
+            return self.model.predict(x)
+        
+    """
+    split_idx = int(0.8 * len(x))
+
+    x_train = x[:split_idx]
+    y_train = y[:split_idx]
+    x_val = x[split_idx:]
+    y_val = y[split_idx:]
+    least_loss = math.inf
+    
+    for nb_epoch in hyperparams["nb_epoch"]:
+        for hidden_size in hyperparams["hidden_size"]:
+            model = Regressor(x_train, nb_epoch=nb_epoch, hidden_size=hidden_size)
+            model.optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
+            model.fit(x_train, y_train)
+            loss = model.score(x_val, y_val)
+            if loss < least_loss:
+                least_loss = loss
+                best_hyperparam = {"nb_epoch": nb_epoch, "hidden_size": hidden_size}
+                best_model = model
+
+
+    """
+    grid_search = GridSearchCV(estimator = Sklearnregressor(), param_grid = hyperparams, scoring = "neg_mean_squared_error", cv=3, verbose=2)
+    grid_search.fit(x_train, y_train)
+    optimised_hyperparams = grid_search.best_params_
+    best_model = grid_search.best_estimator_
+    best_score = grid_search.best_score_
+    """
+
+    save_regressor(best_model)
+
+    return  best_hyperparam # Return the chosen hyper parameters
 
     #######################################################################
     #                       ** END OF YOUR CODE **
@@ -286,7 +335,7 @@ def example_main():
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
-    regressor = Regressor(x_train, nb_epoch = 1000)
+    regressor = Regressor(x_train, nb_epoch = 10)
     regressor.fit(x_train, y_train)
     save_regressor(regressor)
 
@@ -294,7 +343,12 @@ def example_main():
     error = regressor.score(x_train, y_train)
     print(f"\nRegressor error: {error}\n")
 
+    hyperparams = {"nb_epoch": [10, 50, 100], 
+                   "hidden_size": [32, 64, 128]}
+    best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
+    print(best_hyperparam)
+    
+
 
 if __name__ == "__main__":
     example_main()
-
