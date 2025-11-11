@@ -288,7 +288,8 @@ def perform_hyperparameter_search(x, y, hyperparams):
                     model = Regressor(x_train, 
                                     hidden_size=hidden_size, 
                                     activation=activation, 
-                                    num_hidden_layers=num_hidden_layers)
+                                    num_hidden_layers=num_hidden_layers,
+                                    lr=learning_rate)
                     
                     model.fit(x_train, y_train)
                     loss = model.score(x_val, y_val)
