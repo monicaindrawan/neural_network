@@ -212,8 +212,8 @@ class Regressor(torch.nn.Module):
             Y_pred = self.forward(X)
         Y_pred = self.prep_output.revert(Y_pred.numpy())
 
-        MSE = torch.nn.L1Loss()
-        loss = MSE(torch.tensor(Y_pred), Y)
+        RMSE = torch.nn.L1Loss()
+        loss = RMSE(torch.tensor(Y_pred), Y)
         
         return loss.item()
         #######################################################################
