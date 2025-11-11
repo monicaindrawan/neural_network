@@ -70,31 +70,44 @@ class Regressor(torch.nn.Module):
 
         # Replace this code with your own
         # Return preprocessed x and y, return None for y if it was None
-        self.lb = LabelBinarizer()
-        x = x.join(pd.DataFrame(self.lb.fit_transform(x["ocean_proximity"]),
+
+        # One hot encoding
+        if training:
+            self.lb = LabelBinarizer()
+            x = x.join(pd.DataFrame(self.lb.fit_transform(x["ocean_proximity"]),
                         columns=self.lb.classes_, 
                         index=x.index))
-        x = x.drop(columns=["ocean_proximity"])
+            x = x.drop(columns=["ocean_proximity"])
+        else:
+            x = x.join(pd.DataFrame(self.lb.transform(x["ocean_proximity"]),
+                        columns=self.lb.classes_, 
+                        index=x.index))
+            x = x.drop(columns=["ocean_proximity"])
 
         for col in x.head():
             x[col] = x[col].fillna(x[col].median())
-        print(x.head())
+
+        # Must be numpy array for Preprocesser()
         x = x.to_numpy()
-        print(type(x))
+
         if y is not None:
             y = y.to_numpy()
-            
+
+        # Normalises data
         if training:
             self.prep_input = Preprocessor(x)
             x = self.prep_input.apply(x)
-            self.prep_output = Preprocessor(y)
-            y = self.prep_output.apply(y)
+            if y is not None:
+                self.prep_output = Preprocessor(y)
+                y = self.prep_output.apply(y)
         else:
             x = self.prep_input.apply(x)
-        
-
             
-        return x, (y if isinstance(y, torch.tensor) else None)
+        # Corrects type before returning
+        x = torch.tensor(x)
+        if y is not None:
+            y = torch.tensor(y)
+        return x, (y if isinstance(y, torch.Tensor) else None)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
