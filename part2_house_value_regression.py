@@ -1,6 +1,5 @@
 import torch
-import part1_nn_lib
-from sklearn.metrics import f1_score, roc_auc_score
+from part1_nn_lib import Preprocessor
 from sklearn.preprocessing import LabelBinarizer
 import pickle
 import numpy as np
@@ -104,9 +103,9 @@ class Regressor(torch.nn.Module):
             x = self.prep_input.apply(x)
             
         # Corrects type before returning
-        x = torch.tensor(x)
+        x = torch.tensor(x, dtype=torch.float)
         if y is not None:
-            y = torch.tensor(y)
+            y = torch.tensor(y, dtype=torch.float)
         return x, (y if isinstance(y, torch.Tensor) else None)
 
         #######################################################################
@@ -153,6 +152,7 @@ class Regressor(torch.nn.Module):
             loss.backward()
             self.optimiser.step()
 
+        print("Training Completed", end='\r')
         return self
 
         #######################################################################
@@ -283,7 +283,7 @@ def example_main():
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
-    regressor = Regressor(x_train, nb_epoch = 10)
+    regressor = Regressor(x_train, nb_epoch = 100)
     regressor.fit(x_train, y_train)
     save_regressor(regressor)
 
