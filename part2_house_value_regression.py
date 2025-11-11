@@ -143,14 +143,14 @@ class Regressor(torch.nn.Module):
 
         X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
 
-        for epoch in range(self.nb_epoch):
-            print(f"Epoch: {epoch}/{self.nb_epoch}", end='\r')
-            
+        for epoch in range(self.nb_epoch):            
             self.optimiser.zero_grad()
             Y_pred = self.forward(X)
             loss = self.loss_function(Y_pred, Y)
             loss.backward()
             self.optimiser.step()
+
+            print(f"Epoch: {epoch+1}/{self.nb_epoch}, Loss: {loss}")
 
         print("Training Completed", end='\r')
         return self
@@ -181,7 +181,8 @@ class Regressor(torch.nn.Module):
 
         with torch.inference_mode():
             Y_pred = self.forward(X)
-        return Y_pred.numpy()
+
+        return self.prep_output.revert(Y_pred.numpy())
     
 
         #######################################################################
@@ -209,8 +210,10 @@ class Regressor(torch.nn.Module):
         X, Y = self._preprocessor(x, y = y, training = False) # Do not forget
         with torch.inference_mode():
             Y_pred = self.forward(X)
-        MSE = torch.nn.MSELoss()
-        loss = MSE(Y_pred, Y)
+        Y_pred = self.prep_output.revert(Y_pred.numpy())
+
+        MSE = torch.nn.L1Loss()
+        loss = MSE(torch.tensor(Y_pred), Y)
         
         return loss.item()
         #######################################################################
@@ -283,7 +286,7 @@ def example_main():
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
     # to make sure the model isn't overfitting
-    regressor = Regressor(x_train, nb_epoch = 100)
+    regressor = Regressor(x_train, nb_epoch = 1000)
     regressor.fit(x_train, y_train)
     save_regressor(regressor)
 
