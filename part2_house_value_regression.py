@@ -1,11 +1,13 @@
 import torch
+import part1_nn_lib
+from sklearn.metrics import f1_score, roc_auc_score
 import pickle
 import numpy as np
 import pandas as pd
 
-class Regressor:
+class Regressor(torch.nn.Module):
 
-    def __init__(self, x, nb_epoch = 1000):
+    def __init__(self, x, nb_epoch = 1000, hidden_size=128):
         # You can add any input parameters you need
         # Remember to set them with a default value for LabTS tests
         """ 
@@ -24,11 +26,19 @@ class Regressor:
         #######################################################################
 
         # Replace this code with your own
+        super().__init__()
+
         X, _ = self._preprocessor(x, training = True)
         self.input_size = X.shape[1]
+        self.hidden_size = hidden_size
         self.output_size = 1
-        self.nb_epoch = nb_epoch 
-        return
+        self.nb_epoch = nb_epoch
+
+        self.input_layer = torch.nn.Linear(self.input_size, self.hidden_size)
+        self.hidden_layer = torch.nn.Linear(self.hidden_size, self.hidden_size)
+        self.output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
+
+        self.activation = torch.nn.Sigmoid()
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -65,7 +75,14 @@ class Regressor:
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-        
+    def forward(self, x):
+        return self.activation(
+            self.output_layer(
+            self.hidden_layer(
+            self.activation(
+            self.input_layer(x)))))
+
+
     def fit(self, x, y):
         """
         Regressor training function
@@ -84,7 +101,20 @@ class Regressor:
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        self.loss_function = torch.nn.MSELoss()
+        self.optimiser = torch.optim.Adam(self.parameters(), lr=0.01)
+
         X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
+
+        for epoch in range(self.nb_epoch):
+            print(f"Epoch: {epoch}/{self.nb_epoch}", end='\r')
+            
+            self.optimiser.zero_grad()
+            Y_pred = self.forward(X)
+            loss = self.loss_function(Y_pred, Y)
+            loss.backward()
+            self.optimiser.step()
+
         return self
 
         #######################################################################
@@ -110,7 +140,11 @@ class Regressor:
         #######################################################################
 
         X, _ = self._preprocessor(x, training = False) # Do not forget
-        pass
+
+        with torch.inference_mode():
+            Y_pred = self.forward(X)
+        return Y_pred.numpy()
+    
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -135,8 +169,12 @@ class Regressor:
         #######################################################################
 
         X, Y = self._preprocessor(x, y = y, training = False) # Do not forget
-        return 0 # Replace this code with your own
-
+        with torch.inference_mode():
+            Y_pred = self.forward(X)
+        MSE = torch.nn.MSELoss()
+        loss = MSE(Y_pred, Y)
+        
+        return loss.item()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
