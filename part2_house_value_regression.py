@@ -1,6 +1,7 @@
 import torch
 import part1_nn_lib
 from sklearn.metrics import f1_score, roc_auc_score
+from sklearn.preprocessing import LabelBinarizer
 import pickle
 import numpy as np
 import pandas as pd
@@ -69,7 +70,31 @@ class Regressor(torch.nn.Module):
 
         # Replace this code with your own
         # Return preprocessed x and y, return None for y if it was None
-        return x, (y if isinstance(y, pd.DataFrame) else None)
+        self.lb = LabelBinarizer()
+        x = x.join(pd.DataFrame(self.lb.fit_transform(x["ocean_proximity"]),
+                        columns=self.lb.classes_, 
+                        index=x.index))
+        x = x.drop(columns=["ocean_proximity"])
+
+        for col in x.head():
+            x[col] = x[col].fillna(x[col].median())
+        print(x.head())
+        x = x.to_numpy()
+        print(type(x))
+        if y is not None:
+            y = y.to_numpy()
+            
+        if training:
+            self.prep_input = Preprocessor(x)
+            x = self.prep_input.apply(x)
+            self.prep_output = Preprocessor(y)
+            y = self.prep_output.apply(y)
+        else:
+            x = self.prep_input.apply(x)
+        
+
+            
+        return x, (y if isinstance(y, torch.tensor) else None)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
