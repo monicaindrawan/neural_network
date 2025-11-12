@@ -37,7 +37,7 @@ class Regressor(torch.nn.Module):
         self.num_hidden_layers = num_hidden_layers
  
         self.input_layer = torch.nn.Linear(self.input_size, self.hidden_size)
-        self.hidden_layers = torch.nn.ModuleList()  
+        self.hidden_layers = torch.nn.ModuleList()
         for layer in range(self.num_hidden_layers):
             self.hidden_layers.append(torch.nn.Linear(self.hidden_size, self.hidden_size))
 
@@ -120,7 +120,7 @@ class Regressor(torch.nn.Module):
     def forward(self, x):
         x = self.activation_layer(self.input_layer(x))
         for layer in self.hidden_layers:
-            x = layer(x)
+            x = self.activation_layer(layer(x))
         x = self.activation_layer(self.output_layer(x))
         return x
 
@@ -147,7 +147,7 @@ class Regressor(torch.nn.Module):
         #######################################################################
 
         self.loss_function = torch.nn.MSELoss()
-        self.optimiser = torch.optim.Adam(self.parameters(), lr=0.01)
+        self.optimiser = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
 
