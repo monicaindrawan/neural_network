@@ -259,10 +259,15 @@ def perform_hyperparameter_search(x, y, hyperparams):
     in the Regressor class.
 
     Arguments:
-        Add whatever inputs you need.
+        - x {pd.DataFrame} -- Raw input array of shape 
+                (batch_size, input_size).
+        - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
+        - hyperparams (dict[list]) -- Dictionary containing hyperparameters with each key having an associated value
+                                      of a list of parameters to evaluate over.
         
     Returns:
-        The function should return your optimised hyper-parameters. 
+        dict : {activation layer, neurons in hidden layer, number of hidden layers, learning rate}
+                Dictionary containing parameters of best model.
 
     """
 
@@ -270,10 +275,13 @@ def perform_hyperparameter_search(x, y, hyperparams):
     #                       ** START OF YOUR CODE **
     #######################################################################
     
-    #hyperparams = {"nb_epoch": [10, 100, 500], 
-                  # "hidden_size": [64, 128, 256]}
-    
-    split_idx = int(0.8 * len(x))
+    # Shuffle the data
+    indices = np.random.permutation(len(x))
+    x_shuffled = x.iloc[indices] 
+    y_shuffled = y.iloc[indices]
+
+    # 80/20 train/test split
+    split_idx = int(0.8 * len(x_shuffled))
 
     x_train = x[:split_idx]
     y_train = y[:split_idx]
