@@ -38,6 +38,7 @@ class Regressor(torch.nn.Module):
  
         self.input_layer = torch.nn.Linear(self.input_size, self.hidden_size)
         self.hidden_layers = torch.nn.ModuleList()
+        
         for layer in range(self.num_hidden_layers):
             self.hidden_layers.append(torch.nn.Linear(self.hidden_size, self.hidden_size))
 
@@ -338,19 +339,20 @@ def perform_hyperparameter_search(x, y, hyperparams):
 
 
 def example_main():
-
     output_label = "median_house_value"
 
     # Use pandas to read CSV data as it contains various object types
     # Feel free to use another CSV reader tool
     # But remember that LabTS tests take Pandas DataFrame as inputs
     data = pd.read_csv("housing.csv") 
+    
 
     # Splitting input and output
 
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
     x_train, y_train, x_test, y_test = shuffle(x, y, 0.8)
+
 
     # Training
     # This example trains on the whole available dataset. 
@@ -387,20 +389,13 @@ def test_pickle():
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
 
-    indices = np.random.permutation(len(x))
-    x_shuffled = x.iloc[indices] 
-    y_shuffled = y.iloc[indices]
-    split_idx = int(0.8 * len(x_shuffled))
-    x_train = x[:split_idx]
-    y_train = y[:split_idx]
-    x_test = x[split_idx:]
-    y_test = y[split_idx:]
-
+    x_train, y_train, x_test, y_test = shuffle(x, y, 0.8)
 
     trained_model = load_regressor()
 
     error = trained_model.score(x_test, y_test)
     print(f"\nRegressor error: {error}\n")
+
 
 if __name__ == "__main__":
     example_main()
