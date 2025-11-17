@@ -249,7 +249,29 @@ def load_regressor():
     print("\nLoaded model in part2_model.pickle\n")
     return trained_model
 
+def shuffle(x, y, split = 0.8):
+    """ Shuffles x and y into training and test splits
 
+    Args:
+        - x {pd.DataFrame} -- Raw input array of shape 
+                (batch_size, input_size).
+        - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
+        - split {int} - Training split ratio
+
+    Returns:
+        (pd.dataframe, pd.dataframe, pd.dataframe, pd.dataframe) -- training and test pandas dataframes for x and y.
+    """
+    split_idx = int(split * len(x))
+
+    indices = np.random.permutation(len(x))
+    x_shuffled = x.iloc[indices] 
+    y_shuffled = y.iloc[indices]
+    x_train = x[:split_idx]
+    y_train = y[:split_idx]
+    x_test = x[split_idx:]
+    y_test = y[split_idx:]
+
+    return x_train, y_train, x_test, y_test
 
 
 def perform_hyperparameter_search(x, y, hyperparams): 
@@ -276,17 +298,8 @@ def perform_hyperparameter_search(x, y, hyperparams):
     #######################################################################
     
     # Shuffle the data
-    indices = np.random.permutation(len(x))
-    x_shuffled = x.iloc[indices] 
-    y_shuffled = y.iloc[indices]
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
 
-    # 80/20 train/test split
-    split_idx = int(0.8 * len(x_shuffled))
-
-    x_train = x[:split_idx]
-    y_train = y[:split_idx]
-    x_val = x[split_idx:]
-    y_val = y[split_idx:]
     least_loss = float("inf")
     
     for learning_rate in hyperparams["learning_rate"]:
@@ -334,8 +347,10 @@ def example_main():
     data = pd.read_csv("housing.csv") 
 
     # Splitting input and output
-    x_train = data.loc[:, data.columns != output_label]
-    y_train = data.loc[:, [output_label]]
+
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    x_train, y_train, x_test, y_test = shuffle(x, y, 0.8)
 
     # Training
     # This example trains on the whole available dataset. 
@@ -358,5 +373,35 @@ def example_main():
     
 
 
+def test_pickle():
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+
+    # Splitting input and output
+
+
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+
+    indices = np.random.permutation(len(x))
+    x_shuffled = x.iloc[indices] 
+    y_shuffled = y.iloc[indices]
+    split_idx = int(0.8 * len(x_shuffled))
+    x_train = x[:split_idx]
+    y_train = y[:split_idx]
+    x_test = x[split_idx:]
+    y_test = y[split_idx:]
+
+
+    trained_model = load_regressor()
+
+    error = trained_model.score(x_test, y_test)
+    print(f"\nRegressor error: {error}\n")
+
 if __name__ == "__main__":
     example_main()
+    test_pickle()
