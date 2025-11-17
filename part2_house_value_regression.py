@@ -7,7 +7,7 @@ import pandas as pd
 
 class Regressor(torch.nn.Module):
 
-    def __init__(self, x, nb_epoch = 1000, hidden_size=128):
+    def __init__(self, x, nb_epoch = 100, hidden_size=128, activation=torch.nn.Sigmoid(), num_hidden_layers=1, lr=0.01):
         # You can add any input parameters you need
         # Remember to set them with a default value for LabTS tests
         """ 
@@ -33,12 +33,17 @@ class Regressor(torch.nn.Module):
         self.hidden_size = hidden_size
         self.output_size = 1
         self.nb_epoch = nb_epoch
-
+        self.lr = lr
+        self.num_hidden_layers = num_hidden_layers
+ 
         self.input_layer = torch.nn.Linear(self.input_size, self.hidden_size)
-        self.hidden_layer = torch.nn.Linear(self.hidden_size, self.hidden_size)
-        self.output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
+        self.hidden_layers = torch.nn.ModuleList()
+        for layer in range(self.num_hidden_layers):
+            self.hidden_layers.append(torch.nn.Linear(self.hidden_size, self.hidden_size))
 
-        self.activation = torch.nn.Sigmoid()
+        self.output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
+        self.activation_layer = activation
+        
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -113,11 +118,14 @@ class Regressor(torch.nn.Module):
         #######################################################################
 
     def forward(self, x):
-        return self.activation(
-            self.output_layer(
-            self.hidden_layer(
-            self.activation(
-            self.input_layer(x)))))
+        x = self.activation_layer(self.input_layer(x))
+        for layer in self.hidden_layers:
+            x = self.activation_layer(layer(x))
+        x = self.activation_layer(self.output_layer(x))
+        return x
+
+        
+
 
 
     def fit(self, x, y):
@@ -139,7 +147,7 @@ class Regressor(torch.nn.Module):
         #######################################################################
 
         self.loss_function = torch.nn.MSELoss()
-        self.optimiser = torch.optim.Adam(self.parameters(), lr=0.01)
+        self.optimiser = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         X, Y = self._preprocessor(x, y = y, training = True) # Do not forget
 
@@ -213,7 +221,7 @@ class Regressor(torch.nn.Module):
         Y_pred = self.prep_output.revert(Y_pred.numpy())
 
         RMSE = torch.nn.L1Loss()
-        loss = RMSE(torch.tensor(Y_pred), Y)
+        loss = RMSE(torch.tensor(Y_pred), torch.tensor(Y))
         
         return loss.item()
         #######################################################################
@@ -243,6 +251,7 @@ def load_regressor():
 
 
 
+
 def perform_hyperparameter_search(x, y, hyperparams): 
     # Ensure to add whatever inputs you deem necessary to this function
     """
@@ -250,10 +259,15 @@ def perform_hyperparameter_search(x, y, hyperparams):
     in the Regressor class.
 
     Arguments:
-        Add whatever inputs you need.
+        - x {pd.DataFrame} -- Raw input array of shape 
+                (batch_size, input_size).
+        - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
+        - hyperparams (dict[list]) -- Dictionary containing hyperparameters with each key having an associated value
+                                      of a list of parameters to evaluate over.
         
     Returns:
-        The function should return your optimised hyper-parameters. 
+        dict : {activation layer, neurons in hidden layer, number of hidden layers, learning rate}
+                Dictionary containing parameters of best model.
 
     """
 
@@ -261,52 +275,44 @@ def perform_hyperparameter_search(x, y, hyperparams):
     #                       ** START OF YOUR CODE **
     #######################################################################
     
-    #hyperparams = {"nb_epoch": [10, 100, 500], 
-                  # "hidden_size": [64, 128, 256]}
-    """
-    class Sklearnregressor:
-        def __init__(self, nb_epoch=10, hidden_size=64):
-            self.nb_epoch = nb_epoch
-            self.hidden_size = hidden_size
-        
-        def fit(self, x, y):
-            self.loss_function = torch.nn.MSELoss()
-            self.optimiser = torch.optim.Adam(self.parameters(), lr=0.01)
-            self.model = Regressor(x_train, nb_epoch=10, hidden_size=self.hidden_size)
-            self.model.fit(x,y)
-            return self
+    # Shuffle the data
+    indices = np.random.permutation(len(x))
+    x_shuffled = x.iloc[indices] 
+    y_shuffled = y.iloc[indices]
 
-        def predict(self, x):
-            return self.model.predict(x)
-        
-    """
-    split_idx = int(0.8 * len(x))
+    # 80/20 train/test split
+    split_idx = int(0.8 * len(x_shuffled))
 
     x_train = x[:split_idx]
     y_train = y[:split_idx]
     x_val = x[split_idx:]
     y_val = y[split_idx:]
-    least_loss = math.inf
+    least_loss = float("inf")
     
-    for nb_epoch in hyperparams["nb_epoch"]:
-        for hidden_size in hyperparams["hidden_size"]:
-            model = Regressor(x_train, nb_epoch=nb_epoch, hidden_size=hidden_size)
-            model.optimiser = torch.optim.Adam(model.parameters(), lr=0.01)
-            model.fit(x_train, y_train)
-            loss = model.score(x_val, y_val)
-            if loss < least_loss:
-                least_loss = loss
-                best_hyperparam = {"nb_epoch": nb_epoch, "hidden_size": hidden_size}
-                best_model = model
+    for learning_rate in hyperparams["learning_rate"]:
+        for num_hidden_layers in hyperparams["num_hidden_layers"]:
+            for activation in hyperparams["activation_layer"]:
+                for hidden_size in hyperparams["hidden_size"]:
+                    model = Regressor(x_train, 
+                                    hidden_size=hidden_size, 
+                                    activation=activation, 
+                                    num_hidden_layers=num_hidden_layers,
+                                    lr=learning_rate)
+                    
+                    model.fit(x_train, y_train)
+                    loss = model.score(x_val, y_val)
+                    if loss < least_loss:
+                        least_loss = loss
+                        best_hyperparam = {"activation_layer": activation, 
+                                        "hidden_size": hidden_size, 
+                                        "num_hidden_layers": num_hidden_layers,
+                                        "learning_rate": learning_rate}
+                        best_model = model
+                
 
-
-    """
-    grid_search = GridSearchCV(estimator = Sklearnregressor(), param_grid = hyperparams, scoring = "neg_mean_squared_error", cv=3, verbose=2)
-    grid_search.fit(x_train, y_train)
-    optimised_hyperparams = grid_search.best_params_
-    best_model = grid_search.best_estimator_
-    best_score = grid_search.best_score_
-    """
+   
+    print(f"Loss for the best model is {least_loss}.")
+    print(f"Optimised hyperparameters are {best_hyperparam}.")
 
     save_regressor(best_model)
 
@@ -343,10 +349,12 @@ def example_main():
     error = regressor.score(x_train, y_train)
     print(f"\nRegressor error: {error}\n")
 
-    hyperparams = {"nb_epoch": [10, 50, 100], 
-                   "hidden_size": [32, 64, 128]}
+    hyperparams = {"activation_layer": [torch.nn.Sigmoid(), torch.nn.ReLU()],
+                   "hidden_size": [32, 64, 128],
+                   "num_hidden_layers": [1, 2, 3],
+                   "learning_rate": [0.005, 0.01]}
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
-    print(best_hyperparam)
+    #print(best_hyperparam)
     
 
 
