@@ -478,7 +478,44 @@ def test_loss_per_epoch():
     plt.legend()
     plt.show()
 
+def test_activation_cahnge():
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
     
+
+    # Splitting input and output
+
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 2, 'nb_epoch': 200}
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
+    learning_rates = [0.005, 0.01, 0.015, 0.02, 0.03, 0.05, 0.07, 0.1]
+    train_loss_list = []
+    test_loss_list = []
+    for lr in learning_rates:
+        model = Regressor(x_train, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=best_hyperparam["activation_layer"], 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=lr,
+                        nb_epoch=best_hyperparam["nb_epoch"])
+        error = model.fit_and_compute_train_val_loss(x_train, y_train, x_val, y_val)
+        train_loss_list.append(error.train_loss_per_epoch[-1])
+        test_loss_list.append(error.val_loss_per_epoch[-1])
+
+    nb_epoch_max = best_hyperparam["nb_epoch"]
+
+    plt.plot(learning_rates, train_loss_list, color="b", label="Training loss")
+    plt.plot(learning_rates, test_loss_list, color="r", label="Validation loss")
+    plt.xlabel("Activation number")
+    plt.ylabel("Loss")
+    plt.title("Training and validation loss against activation cahnge")
+    plt.legend()
+    plt.show()
 
 def example_main():
     output_label = "median_house_value"
@@ -548,4 +585,5 @@ def test_pickle():
 if __name__ == "__main__":
     #example_main()
     #test_pickle()
-    test_loss_per_epoch()
+    #test_loss_per_epoch()
+    test_activation_cahnge()
