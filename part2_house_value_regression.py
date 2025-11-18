@@ -155,8 +155,8 @@ class Regressor(torch.nn.Module):
             loss.backward()
             self.optimiser.step()
             # Unscale training data
-            Y_pred_unscaled = self.prep_output.revert(Y_pred.detach().numpy())
-            Y_train_unscaled = self.prep_output.revert(Y.numpy())
+            # Y_pred_unscaled = self.prep_output.revert(Y_pred.detach().numpy())
+            # Y_train_unscaled = self.prep_output.revert(Y.numpy())
             train_loss = torch.sqrt(torch.mean((torch.tensor(Y_pred_unscaled) - torch.tensor(Y_train_unscaled))**2))
             self.train_loss_per_epoch.append(train_loss.item())
 
@@ -264,7 +264,7 @@ class Regressor(torch.nn.Module):
         # Y_pred = self.prep_output.revert(Y_pred.numpy())
 
         MSE = torch.nn.MSELoss()
-        loss = MSE(torch.tensor(Y_pred), torch.tensor(Y))
+        loss = MSE(Y_pred, Y)
         
         return torch.sqrt(loss).item()
         #######################################################################
@@ -292,19 +292,21 @@ class Regressor(torch.nn.Module):
         X, Y = self._preprocessor(x, y = y, training = False) 
         with torch.inference_mode():
             Y_pred = self.forward(X)
-        Y_pred = self.prep_output.revert(Y_pred.numpy())
+        # Y_pred = self.prep_output.revert(Y_pred.numpy())
 
         metrics = {}
 
         RMSE = torch.nn.MSELoss()
-        rmse_loss = torch.sqrt(RMSE(torch.tensor(Y_pred), torch.tensor(Y)))
+        rmse_loss = torch.sqrt(RMSE(Y_pred, Y)).item()
         metrics['rmse'] = rmse_loss
 
         MAE = torch.nn.L1Loss() 
-        mae_error = MAE(torch.tensor(Y_pred), torch.tensor(Y))
+        mae_error = MAE(Y_pred, Y).item()
         metrics['mae_error'] = mae_error
     
-        R2_score = r2_score(torch.tensor(Y), torch.tensor(Y_pred))
+        y_true = Y.detach().view(-1).cpu().numpy()
+        y_pred = Y_pred.detach().view(-1).cpu().numpy()
+        R2_score = r2_score(y_true, y_pred)
         metrics['r2_error'] = R2_score
             
         return metrics
@@ -698,7 +700,7 @@ def example_main():
                    "hidden_size": [256],
                    "num_hidden_layers": [4],
                    "learning_rate": [0.02],
-                   "nb_epoch": [2000]}
+                   "nb_epoch": [100]}
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
     # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.01, 'nb_epoch': 200}
@@ -732,7 +734,7 @@ def test_pickle():
 
 
 if __name__ == "__main__":
-    example_main()
+    # example_main()
     #test_pickle()
     #test_loss_per_epoch()
     # test_loss_per_learning_rate()
