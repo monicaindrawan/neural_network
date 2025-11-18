@@ -4,6 +4,7 @@ from sklearn.preprocessing import LabelBinarizer
 import pickle
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class Regressor(torch.nn.Module):
 
@@ -45,6 +46,8 @@ class Regressor(torch.nn.Module):
         self.output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
         self.activation_layer = activation
         
+        self.train_loss_per_epoch = []
+        self.val_loss_per_epoch = []
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -125,9 +128,40 @@ class Regressor(torch.nn.Module):
         x = self.activation_layer(self.output_layer(x))
         return x
 
+    
+    def fit_and_compute_train_val_loss(self, x_train, y_train, x_val, y_val):
+        """ Train the model on training data, then compute and store the loss on 
+            the training and validation data for each epoch.
+            Used for plotting training and testing loss against parameter.
+        """
+        self.loss_function = torch.nn.MSELoss()
+        self.optimiser = torch.optim.Adam(self.parameters(), lr=self.lr)
+        self.train_loss_per_epoch = []
+        self.val_loss_per_epoch = []
+
+        X, Y = self._preprocessor(x_train, y = y_train, training = True) # Do not forget
         
+        for epoch in range(self.nb_epoch):            
+            self.optimiser.zero_grad()
+            Y_pred = self.forward(X)
+            loss = self.loss_function(Y_pred, Y)
+            loss.backward()
+            self.optimiser.step()
+            # Unscale training data
+            Y_pred_unscaled = self.prep_output.revert(Y_pred.detach().numpy())
+            Y_train_unscaled = self.prep_output.revert(Y.numpy())
+            train_loss = torch.sqrt(torch.mean((torch.tensor(Y_pred_unscaled) - torch.tensor(Y_train_unscaled))**2))
+            self.train_loss_per_epoch.append(train_loss.item())
 
+            
+            val_loss = self.score(x_val, y_val)
+            self.val_loss_per_epoch.append(val_loss)
+            print(f"Epoch: {epoch+1}/{self.nb_epoch}, Loss: {loss}")
 
+        print("Training Completed", end='\r')
+        
+        return self
+    
 
     def fit(self, x, y):
         """
@@ -158,7 +192,7 @@ class Regressor(torch.nn.Module):
             loss = self.loss_function(Y_pred, Y)
             loss.backward()
             self.optimiser.step()
-
+            loss = torch.sqrt(loss)
             print(f"Epoch: {epoch+1}/{self.nb_epoch}, Loss: {loss}")
 
         print("Training Completed", end='\r')
@@ -221,10 +255,10 @@ class Regressor(torch.nn.Module):
             Y_pred = self.forward(X)
         Y_pred = self.prep_output.revert(Y_pred.numpy())
 
-        RMSE = torch.nn.L1Loss()
-        loss = RMSE(torch.tensor(Y_pred), torch.tensor(Y))
+        MSE = torch.nn.MSELoss()
+        loss = MSE(torch.tensor(Y_pred), torch.tensor(Y))
         
-        return loss.item()
+        return torch.sqrt(loss).item()
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -267,8 +301,8 @@ def shuffle(x, y, split = 0.8):
     indices = np.random.permutation(len(x))
     x_shuffled = x.iloc[indices] 
     y_shuffled = y.iloc[indices]
-    x_train = x[:split_idx]
-    y_train = y[:split_idx]
+    x_train = x_shuffled[:split_idx]
+    y_train = y_shuffled[:split_idx]
     x_test = x[split_idx:]
     y_test = y[split_idx:]
 
@@ -303,29 +337,38 @@ def perform_hyperparameter_search(x, y, hyperparams):
 
     least_loss = float("inf")
     
-    for learning_rate in hyperparams["learning_rate"]:
-        for num_hidden_layers in hyperparams["num_hidden_layers"]:
-            for activation in hyperparams["activation_layer"]:
-                for hidden_size in hyperparams["hidden_size"]:
-                    model = Regressor(x_train, 
-                                    hidden_size=hidden_size, 
-                                    activation=activation, 
-                                    num_hidden_layers=num_hidden_layers,
-                                    lr=learning_rate)
-                    
-                    model.fit(x_train, y_train)
-                    loss = model.score(x_val, y_val)
-                    if loss < least_loss:
-                        least_loss = loss
-                        best_hyperparam = {"activation_layer": activation, 
-                                        "hidden_size": hidden_size, 
-                                        "num_hidden_layers": num_hidden_layers,
-                                        "learning_rate": learning_rate}
-                        best_model = model
-                
+    for nb_epoch in hyperparams["nb_epoch"]:
+        for learning_rate in hyperparams["learning_rate"]:
+            for num_hidden_layers in hyperparams["num_hidden_layers"]:
+                for activation in hyperparams["activation_layer"]:
+                    for hidden_size in hyperparams["hidden_size"]:
+                        model = Regressor(x_train, 
+                                        hidden_size=hidden_size, 
+                                        activation=activation, 
+                                        num_hidden_layers=num_hidden_layers,
+                                        lr=learning_rate,
+                                        nb_epoch=nb_epoch)
+                        
+                        model.fit(x_train, y_train)
+                        loss = model.score(x_val, y_val)
+                        if loss < least_loss:
+                            least_loss = loss
+                            best_hyperparam = {"activation_layer": activation, 
+                                            "hidden_size": hidden_size, 
+                                            "num_hidden_layers": num_hidden_layers,
+                                            "learning_rate": learning_rate,
+                                            "nb_epoch": nb_epoch}
+                            best_model = model
 
-   
-    print(f"Loss for the best model is {least_loss}.")
+    #retrain the model on the full dataset using the best_model hyperparameters           
+    best_model = Regressor(x, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=best_hyperparam["activation_layer"], 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=best_hyperparam["learning_rate"],
+                        nb_epoch=best_hyperparam["nb_epoch"])
+    best_model.fit(x, y)
+    print(f"Loss for the best model is {least_loss}.") #after retaining the model should be better than this
     print(f"Optimised hyperparameters are {best_hyperparam}.")
 
     save_regressor(best_model)
@@ -335,6 +378,65 @@ def perform_hyperparameter_search(x, y, hyperparams):
     #######################################################################
     #                       ** END OF YOUR CODE **
     #######################################################################
+
+
+
+def generate_graph_loss_against_nb_epoch(x, y, best_hyperparam):
+
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
+    train_loss_values = []
+    val_loss_values = []
+    nb_epoch_max = 300
+    model = Regressor(x_train, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=torch.nn.ReLU(), 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=best_hyperparam["learning_rate"],
+                        nb_epoch=nb_epoch_max)
+    
+    
+    model.fit_and_compute_train_val_loss(x_train, y_train, x_val, y_val)
+        
+    train_loss_values = model.train_loss_per_epoch
+
+    val_loss_values = model.val_loss_per_epoch
+
+    plt.plot(list(range(1,nb_epoch_max+1)), train_loss_values, color="b", label="Training loss")
+    plt.plot(list(range(1,nb_epoch_max+1)), val_loss_values, color="r", label="Validation loss")
+    plt.xlabel("Number of epochs")
+    plt.ylabel("Loss")
+    plt.title("Training and validation loss against number of epochs")
+    plt.legend()
+    plt.show()
+
+def generate_graph_loss_against_activation_layer(x, y, best_hyperparam):
+
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
+    train_loss_values = []
+    val_loss_values = []
+    nb_epoch_max = 300
+    model = Regressor(x_train, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=best_hyperparam["actication"], 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=best_hyperparam["learning_rate"],
+                        nb_epoch=best_hyperparam["nb_epoch"])
+    
+    
+    model.fit_and_compute_train_val_loss(x_train, y_train, x_val, y_val)
+        
+    train_loss_values = model.train_loss_per_epoch
+
+    val_loss_values = model.val_loss_per_epoch
+
+    plt.plot(list(range(1,nb_epoch_max+1)), train_loss_values, color="b", label="Training loss")
+    plt.plot(list(range(1,nb_epoch_max+1)), val_loss_values, color="r", label="Validation loss")
+    plt.xlabel("Number of epochs")
+    plt.ylabel("Loss")
+    plt.title("Training and validation loss against number of epochs")
+    plt.legend()
+    plt.show()       
+
 
 
 
@@ -367,11 +469,16 @@ def example_main():
     print(f"\nRegressor error: {error}\n")
 
     hyperparams = {"activation_layer": [torch.nn.Sigmoid(), torch.nn.ReLU()],
-                   "hidden_size": [32, 64, 128],
+                   "hidden_size": [64, 128, 256],
                    "num_hidden_layers": [1, 2, 3],
-                   "learning_rate": [0.005, 0.01]}
+                   "learning_rate": [0.005, 0.01],
+                   "nb_epoch": [50, 100, 200]}
+    
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
-    #print(best_hyperparam)
+    # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 1, 'learning_rate': 0.005, 'nb_epoch': 200}
+    generate_graph_loss_against_nb_epoch(x, y, best_hyperparam)
+    print(best_hyperparam)
+
     
 
 
