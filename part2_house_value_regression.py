@@ -5,6 +5,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.metrics import r2_score
+
+torch.manual_seed(0)
 
 class Regressor(torch.nn.Module):
 
@@ -267,6 +270,44 @@ class Regressor(torch.nn.Module):
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+    
+    def evaluation(self, x, y):
+        """
+        Function to evaluate the model accuracy on a validation dataset.
+
+        Arguments:
+            - x {pd.DataFrame} -- Raw input array of shape 
+                (batch_size, input_size).
+            - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
+
+        Returns:
+            {dict} -- Evaluation metrics of the best model (RMS)
+
+        """
+
+        #######################################################################
+        #                       ** START OF YOUR CODE **
+        #######################################################################
+
+        X, Y = self._preprocessor(x, y = y, training = False) 
+        with torch.inference_mode():
+            Y_pred = self.forward(X)
+        Y_pred = self.prep_output.revert(Y_pred.numpy())
+
+        metrics = {}
+
+        RMSE = torch.nn.MSELoss()
+        rmse_loss = torch.sqrt(RMSE(torch.tensor(Y_pred), torch.tensor(Y)))
+        metrics['rmse'] = rmse_loss
+
+        MAE = torch.nn.L1Loss() 
+        mae_error = MAE(torch.tensor(Y_pred), torch.tensor(Y))
+        metrics['mae_error'] = mae_error
+    
+        R2_score = r2_score(torch.tensor(Y), torch.tensor(Y_pred))
+        metrics['r2_error'] = R2_score
+            
+        return metrics
 
 
 def save_regressor(trained_model): 
@@ -376,6 +417,9 @@ def perform_hyperparameter_search(x, y, hyperparams):
     print(f"Loss for the best model is {least_loss}.") #after retaining the model should be better than this
     print(f"Optimised hyperparameters are {best_hyperparam}.")
 
+    metrics = best_model.evaluation(x_val, y_val)
+    print(f"Evaluation metrics for the best model is {metrics}.")
+
     save_regressor(best_model)
 
     return  best_hyperparam # Return the chosen hyper parameters
@@ -478,21 +522,21 @@ def generate_loss_against_learning_rate(x, y, best_hyperparam):
     train_loss_values = []
     val_loss_values = []
 
-    for lr in np.arange(0.001, 0.1, 0.005):
+    for lr in np.arange(0.001, 0.1, 0.01):
         model = Regressor(x_train, 
                         hidden_size=best_hyperparam["hidden_size"], 
                         activation=best_hyperparam["activation_layer"], 
                         num_hidden_layers=best_hyperparam["num_hidden_layers"],
                         lr=lr,
-                        nb_epoch=50)
+                        nb_epoch=100)
         model.fit(x_train, y_train)
         train_loss = model.score(x_train, y_train)
         train_loss_values.append(train_loss)
         val_loss = model.score(x_val, y_val)
         val_loss_values.append(val_loss)
 
-    plt.plot(list(np.arange(0.001, 0.1, 0.005)), train_loss_values, color="b", label="Training loss")
-    plt.plot(list(np.arange(0.001, 0.1, 0.005)), val_loss_values, color="r", label="Validation loss")
+    plt.plot(list(np.arange(0.001, 0.1, 0.01)), train_loss_values, color="b", label="Training loss")
+    plt.plot(list(np.arange(0.001, 0.1, 0.01)), val_loss_values, color="r", label="Validation loss")
     plt.xlabel("Learning rate")
     plt.ylabel("Loss")
     plt.title("Training and validation loss against learning rate")
@@ -588,7 +632,7 @@ def test_learning_rate_change():
 
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 2, 'nb_epoch': 200}
+    best_hyperparam = {'activation_layer': torch.nn.LeakyReLU(), 'hidden_size': 128, 'num_hidden_layers': 2, 'nb_epoch': 200}
     x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
     learning_rates = [0.005, 0.01, 0.015, 0.02, 0.03, 0.05, 0.07, 0.1]
     train_loss_list = []
@@ -688,7 +732,7 @@ def test_pickle():
 
 
 if __name__ == "__main__":
-    #example_main()
+    example_main()
     #test_pickle()
     #test_loss_per_epoch()
     # test_loss_per_learning_rate()
