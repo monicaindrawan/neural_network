@@ -5,6 +5,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.metrics import r2_score
+
+torch.manual_seed(0)
 
 class Regressor(torch.nn.Module):
 
@@ -262,6 +265,44 @@ class Regressor(torch.nn.Module):
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+    
+    def evaluation(self, x, y):
+        """
+        Function to evaluate the model accuracy on a validation dataset.
+
+        Arguments:
+            - x {pd.DataFrame} -- Raw input array of shape 
+                (batch_size, input_size).
+            - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
+
+        Returns:
+            {dict} -- Evaluation metrics of the best model (RMS)
+
+        """
+
+        #######################################################################
+        #                       ** START OF YOUR CODE **
+        #######################################################################
+
+        X, Y = self._preprocessor(x, y = y, training = False) 
+        with torch.inference_mode():
+            Y_pred = self.forward(X)
+        Y_pred = self.prep_output.revert(Y_pred.numpy())
+
+        metrics = {}
+
+        RMSE = torch.nn.MSELoss()
+        rmse_loss = torch.sqrt(RMSE(torch.tensor(Y_pred), torch.tensor(Y)))
+        metrics['rmse'] = rmse_loss
+
+        MAE = torch.nn.L1Loss() 
+        mae_error = MAE(torch.tensor(Y_pred), torch.tensor(Y))
+        metrics['mae_error'] = mae_error
+    
+        R2_score = r2_score(torch.tensor(Y), torch.tensor(Y_pred))
+        metrics['r2_error'] = R2_score
+            
+        return metrics
 
 
 def save_regressor(trained_model): 
@@ -370,6 +411,9 @@ def perform_hyperparameter_search(x, y, hyperparams):
     best_model.fit(x, y)
     print(f"Loss for the best model is {least_loss}.") #after retaining the model should be better than this
     print(f"Optimised hyperparameters are {best_hyperparam}.")
+
+    metrics = best_model.evaluation(x_val, y_val)
+    print(f"Evaluation metrics for the best model is {metrics}.")
 
     save_regressor(best_model)
 
