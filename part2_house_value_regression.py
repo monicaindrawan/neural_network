@@ -9,7 +9,6 @@ from sklearn.metrics import r2_score
 
 torch.manual_seed(0)
 np.random.seed(0)
-
 class Regressor(torch.nn.Module):
 
     def __init__(self, x, nb_epoch = 100, hidden_size=128, activation=torch.nn.ReLU(), num_hidden_layers=1, lr=0.01):
@@ -155,16 +154,14 @@ class Regressor(torch.nn.Module):
             loss = self.loss_function(Y_pred, Y)
             loss.backward()
             self.optimiser.step()
-            # Unscale training data
-            # Y_pred_unscaled = self.prep_output.revert(Y_pred.detach().numpy())
-            # Y_train_unscaled = self.prep_output.revert(Y.numpy())
-            train_loss = torch.sqrt(torch.mean((torch.tensor(Y_pred_unscaled) - torch.tensor(Y_train_unscaled))**2))
-            self.train_loss_per_epoch.append(train_loss.item())
+            
+            train_loss = torch.sqrt(loss).item()
+            self.train_loss_per_epoch.append(train_loss)
 
             
             val_loss = self.score(x_val, y_val)
             self.val_loss_per_epoch.append(val_loss)
-            print(f"Epoch: {epoch+1}/{self.nb_epoch}, Loss: {loss}")
+            print(f"Epoch: {epoch+1}/{self.nb_epoch}, Train Loss: {train_loss}, Val loss: {val_loss}")
 
         print("Training Completed", end='\r')
         
@@ -352,8 +349,8 @@ def shuffle(x, y, split = 0.8):
     y_shuffled = y.iloc[indices]
     x_train = x_shuffled[:split_idx]
     y_train = y_shuffled[:split_idx]
-    x_test = x[split_idx:]
-    y_test = y[split_idx:]
+    x_test = x_shuffled[split_idx:]
+    y_test = y_shuffled[split_idx:]
 
     return x_train, y_train, x_test, y_test
 
@@ -424,7 +421,8 @@ def perform_hyperparameter_search(x, y, hyperparams):
     print(f"Evaluation metrics for the best model on validation dataset is {val_metrics}.")
 
     train_metrics = best_model.evaluation(x_train, y_train)
-    print(f"Evaluation metrics for the best model on training dataset is {train_metrics}.")  
+    print(f"Evaluation metrics for the best model on training dataset is {train_metrics}.") 
+
 
     save_regressor(best_model)
 
@@ -436,65 +434,6 @@ def perform_hyperparameter_search(x, y, hyperparams):
 
 
 
-def generate_graph_loss_against_nb_epoch(x, y, best_hyperparam):
-
-    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
-    train_loss_values = []
-    val_loss_values = []
-    nb_epoch_max = 200
-    model = Regressor(x_train, 
-                        hidden_size=best_hyperparam["hidden_size"], 
-                        activation=torch.nn.ReLU(), 
-                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
-                        lr=best_hyperparam["learning_rate"],
-                        nb_epoch=nb_epoch_max)
-    
-    
-    model.fit_and_compute_train_val_loss(x_train, y_train, x_val, y_val)
-        
-    train_loss_values = model.train_loss_per_epoch
-
-    val_loss_values = model.val_loss_per_epoch
-
-    plt.plot(list(range(1,nb_epoch_max+1)), train_loss_values, color="b", label="Training loss")
-    plt.plot(list(range(1,nb_epoch_max+1)), val_loss_values, color="r", label="Validation loss")
-    plt.xlabel("Number of epochs")
-    plt.ylabel("Loss")
-    plt.title("Training and validation loss against number of epochs")
-    plt.legend()
-    plt.show()
-
-
-
-def generate_graph_loss_against_nb_epoch_testing(x, y, best_hyperparam):
-    """ Rejected since different model is used each time."""
-    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
-    train_loss_values = []
-    val_loss_values = []
-    nb_epoch_max = 200
-    for epoch in range(1, nb_epoch_max+1, 10):
-        best_model = Regressor(x_train, 
-                        hidden_size=best_hyperparam["hidden_size"], 
-                        activation=best_hyperparam["activation_layer"], 
-                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
-                        lr=best_hyperparam["learning_rate"],
-                        nb_epoch=epoch)
-        best_model.fit(x_train, y_train)
-        train_loss = best_model.score(x_train, y_train)
-        train_loss_values.append(train_loss)
-        val_loss = best_model.score(x_val, y_val)
-        val_loss_values.append(val_loss)
-    plt.plot(list(range(1,nb_epoch_max+1,10)), train_loss_values, color="b", label="Training loss")
-    plt.plot(list(range(1,nb_epoch_max+1,10)), val_loss_values, color="r", label="Validation loss")
-    plt.xlabel("Number of epochs")
-    plt.ylabel("Loss")
-    plt.title("Training and validation loss against number of epochs")
-    plt.legend()
-
-    plt.show()
-
-    plt.show()       
-    
     
 def generate_loss_against_activations(x, y, best_hyperparam):
     """ Keeping other best hyperparameters constant while changing the activation layer type (ReLu vs Sigmoid)
@@ -534,7 +473,7 @@ def generate_loss_against_learning_rate(x, y, best_hyperparam):
                         activation=best_hyperparam["activation_layer"], 
                         num_hidden_layers=best_hyperparam["num_hidden_layers"],
                         lr=lr,
-                        nb_epoch=100)
+                        nb_epoch=best_hyperparam["nb_epoch"])
         model.fit(x_train, y_train)
         train_loss = model.score(x_train, y_train)
         train_loss_values.append(train_loss)
@@ -563,7 +502,7 @@ def test_loss_per_epoch():
 
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 2, 'learning_rate': 0.005, 'nb_epoch': 200}
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 4, 'learning_rate': 0.02, 'nb_epoch': 1000}
     x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
     model = Regressor(x_train, 
                         hidden_size=best_hyperparam["hidden_size"], 
@@ -601,7 +540,7 @@ def test_loss_per_activation():
 
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.005, 'nb_epoch': 200}
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.02, 'nb_epoch': 1000}
     
     losses = generate_loss_against_activations(x, y, best_hyperparam)
     print(losses)
@@ -619,50 +558,11 @@ def test_loss_per_learning_rate():
 
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.005, 'nb_epoch': 200}
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 4, 'learning_rate': 0.02, 'nb_epoch': 1000}
     #best_hyperparam = {'activation_layer': torch.nn.Sigmoid(), 'hidden_size': 256, 'num_hidden_layers': 2, 'learning_rate': 0.01, 'nb_epoch': 200}
     generate_loss_against_learning_rate(x, y, best_hyperparam)
 
 
-
-def test_learning_rate_change():
-    output_label = "median_house_value"
-
-    # Use pandas to read CSV data as it contains various object types
-    # Feel free to use another CSV reader tool
-    # But remember that LabTS tests take Pandas DataFrame as inputs
-    data = pd.read_csv("housing.csv") 
-    
-
-    # Splitting input and output
-
-    x = data.loc[:, data.columns != output_label]
-    y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.LeakyReLU(), 'hidden_size': 128, 'num_hidden_layers': 2, 'nb_epoch': 200}
-    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
-    learning_rates = [0.005, 0.01, 0.015, 0.02, 0.03, 0.05, 0.07, 0.1]
-    train_loss_list = []
-    test_loss_list = []
-    for lr in learning_rates:
-        model = Regressor(x_train, 
-                        hidden_size=best_hyperparam["hidden_size"], 
-                        activation=best_hyperparam["activation_layer"], 
-                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
-                        lr=lr,
-                        nb_epoch=best_hyperparam["nb_epoch"])
-        error = model.fit_and_compute_train_val_loss(x_train, y_train, x_val, y_val)
-        train_loss_list.append(error.train_loss_per_epoch[-1])
-        test_loss_list.append(error.val_loss_per_epoch[-1])
-
-    nb_epoch_max = best_hyperparam["nb_epoch"]
-
-    plt.plot(learning_rates, train_loss_list, color="b", label="Training loss")
-    plt.plot(learning_rates, test_loss_list, color="r", label="Validation loss")
-    plt.xlabel("Learning rate")
-    plt.ylabel("Loss")
-    plt.title("Training and validation loss against learning rate change")
-    plt.legend()
-    plt.show()
 
 
 
@@ -699,12 +599,17 @@ def example_main():
     #                "num_hidden_layers": [3, 4],
     #                "learning_rate": [0.01],
     #                "nb_epoch": [200]}
+    # hyperparams = {"activation_layer": [torch.nn.ReLU()],
+    #                "hidden_size": [128],
+    #                "num_hidden_layers": [4],
+    #                "learning_rate": [0.02],
+    #                "nb_epoch": [1000]}
     
-    hyperparams = {"activation_layer": [torch.nn.ReLU()],
-                   "hidden_size": [256],
-                   "num_hidden_layers": [4],
-                   "learning_rate": [0.02],
-                   "nb_epoch": [100]}
+    hyperparams = {"activation_layer": [torch.nn.ReLU(), torch.nn.Sigmoid()],
+                   "hidden_size": [128, 256],
+                   "num_hidden_layers": [3, 4],
+                   "learning_rate": [0.02, 0.05],
+                   "nb_epoch": [500, 1000]}
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
     # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.01, 'nb_epoch': 200}
@@ -738,9 +643,8 @@ def test_pickle():
 
 
 if __name__ == "__main__":
-    # example_main()
+    example_main()
     #test_pickle()
     #test_loss_per_epoch()
-    # test_loss_per_learning_rate()
-    #test_learning_rate_change()
-    example_main()
+    #test_loss_per_learning_rate()
+    #test_loss_per_activation()
