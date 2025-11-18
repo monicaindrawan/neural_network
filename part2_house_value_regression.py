@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
 torch.manual_seed(0)
+np.random.seed(0)
 
 class Regressor(torch.nn.Module):
 
@@ -419,8 +420,11 @@ def perform_hyperparameter_search(x, y, hyperparams):
     print(f"Loss for the best model is {least_loss}.") #after retaining the model should be better than this
     print(f"Optimised hyperparameters are {best_hyperparam}.")
 
-    metrics = best_model.evaluation(x_val, y_val)
-    print(f"Evaluation metrics for the best model is {metrics}.")
+    val_metrics = best_model.evaluation(x_val, y_val)
+    print(f"Evaluation metrics for the best model on validation dataset is {val_metrics}.")
+
+    train_metrics = best_model.evaluation(x_train, y_train)
+    print(f"Evaluation metrics for the best model on training dataset is {train_metrics}.")  
 
     save_regressor(best_model)
 
