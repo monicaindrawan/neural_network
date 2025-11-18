@@ -386,7 +386,7 @@ def generate_graph_loss_against_nb_epoch(x, y, best_hyperparam):
     x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
     train_loss_values = []
     val_loss_values = []
-    nb_epoch_max = 300
+    nb_epoch_max = 200
     model = Regressor(x_train, 
                         hidden_size=best_hyperparam["hidden_size"], 
                         activation=torch.nn.ReLU(), 
@@ -409,36 +409,36 @@ def generate_graph_loss_against_nb_epoch(x, y, best_hyperparam):
     plt.legend()
     plt.show()
 
-def generate_graph_loss_against_activation_layer(x, y, best_hyperparam):
 
+
+def generate_graph_loss_against_nb_epoch_testing(x, y, best_hyperparam):
+    """ Rejected since different model is used each time."""
     x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
     train_loss_values = []
     val_loss_values = []
-    nb_epoch_max = 300
-    model = Regressor(x_train, 
+    nb_epoch_max = 200
+    for epoch in range(1, nb_epoch_max+1, 10):
+        best_model = Regressor(x_train, 
                         hidden_size=best_hyperparam["hidden_size"], 
-                        activation=best_hyperparam["actication"], 
+                        activation=best_hyperparam["activation_layer"], 
                         num_hidden_layers=best_hyperparam["num_hidden_layers"],
                         lr=best_hyperparam["learning_rate"],
-                        nb_epoch=best_hyperparam["nb_epoch"])
-    
-    
-    model.fit_and_compute_train_val_loss(x_train, y_train, x_val, y_val)
-        
-    train_loss_values = model.train_loss_per_epoch
-
-    val_loss_values = model.val_loss_per_epoch
-
-    plt.plot(list(range(1,nb_epoch_max+1)), train_loss_values, color="b", label="Training loss")
-    plt.plot(list(range(1,nb_epoch_max+1)), val_loss_values, color="r", label="Validation loss")
+                        nb_epoch=epoch)
+        best_model.fit(x_train, y_train)
+        train_loss = best_model.score(x_train, y_train)
+        train_loss_values.append(train_loss)
+        val_loss = best_model.score(x_val, y_val)
+        val_loss_values.append(val_loss)
+    plt.plot(list(range(1,nb_epoch_max+1,10)), train_loss_values, color="b", label="Training loss")
+    plt.plot(list(range(1,nb_epoch_max+1,10)), val_loss_values, color="r", label="Validation loss")
     plt.xlabel("Number of epochs")
     plt.ylabel("Loss")
     plt.title("Training and validation loss against number of epochs")
     plt.legend()
-    plt.show()       
+    plt.show()
 
 
-
+    
 
 def example_main():
     output_label = "median_house_value"
@@ -472,12 +472,13 @@ def example_main():
                    "hidden_size": [64, 128, 256],
                    "num_hidden_layers": [1, 2, 3],
                    "learning_rate": [0.005, 0.01],
-                   "nb_epoch": [50, 100, 200]}
+                   "nb_epoch": [200]} #[50,100,200]
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
-    # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 1, 'learning_rate': 0.005, 'nb_epoch': 200}
-    generate_graph_loss_against_nb_epoch(x, y, best_hyperparam)
+    # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.01, 'nb_epoch': 200}
+    # generate_graph_loss_against_nb_epoch(x, y, best_hyperparam)
     print(best_hyperparam)
+    
 
     
 
