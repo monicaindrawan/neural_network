@@ -442,7 +442,6 @@ def generate_graph_loss_against_nb_epoch_testing(x, y, best_hyperparam):
 
 def test_loss_per_epoch():
     output_label = "median_house_value"
->>>>>>> Stashed changes
 
     # Use pandas to read CSV data as it contains various object types
     # Feel free to use another CSV reader tool
