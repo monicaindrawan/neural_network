@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 class Regressor(torch.nn.Module):
 
-    def __init__(self, x, nb_epoch = 100, hidden_size=128, activation=torch.nn.Sigmoid(), num_hidden_layers=1, lr=0.01):
+    def __init__(self, x, nb_epoch = 100, hidden_size=128, activation=torch.nn.ReLU(), num_hidden_layers=1, lr=0.01):
         # You can add any input parameters you need
         # Remember to set them with a default value for LabTS tests
         """ 
@@ -45,6 +45,7 @@ class Regressor(torch.nn.Module):
 
         self.output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
         self.activation_layer = activation
+        self.dropout_layer = torch.nn.Dropout(0.05)
         
         self.train_loss_per_epoch = []
         self.val_loss_per_epoch = []
@@ -105,9 +106,9 @@ class Regressor(torch.nn.Module):
         if training:
             self.prep_input = Preprocessor(x)
             x = self.prep_input.apply(x)
-            if y is not None:
-                self.prep_output = Preprocessor(y)
-                y = self.prep_output.apply(y)
+            # if y is not None:
+            #     self.prep_output = Preprocessor(y)
+            #     # y = self.prep_output.apply(y)
         else:
             x = self.prep_input.apply(x)
             
@@ -122,10 +123,13 @@ class Regressor(torch.nn.Module):
         #######################################################################
 
     def forward(self, x):
-        x = self.activation_layer(self.input_layer(x))
+        # x = self.activation_layer(self.input_layer(x))
+        x = self.input_layer(x)
+        x = self.dropout_layer(x)
         for layer in self.hidden_layers:
             x = self.activation_layer(layer(x))
-        x = self.activation_layer(self.output_layer(x))
+        # x = self.activation_layer(self.output_layer(x))
+        x = self.output_layer(x)
         return x
 
     
@@ -225,7 +229,8 @@ class Regressor(torch.nn.Module):
         with torch.inference_mode():
             Y_pred = self.forward(X)
 
-        return self.prep_output.revert(Y_pred.numpy())
+        return Y_pred
+        # return self.prep_output.revert(Y_pred.numpy())
     
 
         #######################################################################
@@ -253,7 +258,7 @@ class Regressor(torch.nn.Module):
         X, Y = self._preprocessor(x, y = y, training = False) # Do not forget
         with torch.inference_mode():
             Y_pred = self.forward(X)
-        Y_pred = self.prep_output.revert(Y_pred.numpy())
+        # Y_pred = self.prep_output.revert(Y_pred.numpy())
 
         MSE = torch.nn.MSELoss()
         loss = MSE(torch.tensor(Y_pred), torch.tensor(Y))
@@ -439,6 +444,8 @@ def generate_graph_loss_against_nb_epoch_testing(x, y, best_hyperparam):
     plt.show()
 
     plt.show()       
+    
+    
 def generate_loss_against_activations(x, y, best_hyperparam):
     """ Keeping other best hyperparameters constant while changing the activation layer type (ReLu vs Sigmoid)
         Returns:
@@ -607,6 +614,8 @@ def test_learning_rate_change():
     plt.legend()
     plt.show()
 
+
+
 def example_main():
     output_label = "median_house_value"
 
@@ -635,11 +644,17 @@ def example_main():
     error = regressor.score(x_train, y_train)
     print(f"\nRegressor error: {error}\n")
 
-    hyperparams = {"activation_layer": [torch.nn.Sigmoid(), torch.nn.ReLU()],
-                   "hidden_size": [64, 128, 256],
-                   "num_hidden_layers": [1, 2, 3],
-                   "learning_rate": [0.005, 0.01],
-                   "nb_epoch": [200]} #[50,100,200]
+    # hyperparams = {"activation_layer": [torch.nn.ReLU(), torch.nn.GELU()],
+    #                "hidden_size": [256, 512],
+    #                "num_hidden_layers": [3, 4],
+    #                "learning_rate": [0.01],
+    #                "nb_epoch": [200]}
+    
+    hyperparams = {"activation_layer": [torch.nn.ReLU()],
+                   "hidden_size": [256],
+                   "num_hidden_layers": [4],
+                   "learning_rate": [0.02],
+                   "nb_epoch": [2000]}
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
     # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.01, 'nb_epoch': 200}
@@ -676,5 +691,6 @@ if __name__ == "__main__":
     #example_main()
     #test_pickle()
     #test_loss_per_epoch()
-    test_loss_per_learning_rate()
+    # test_loss_per_learning_rate()
     #test_learning_rate_change()
+    example_main()
