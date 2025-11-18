@@ -435,9 +435,9 @@ def generate_graph_loss_against_nb_epoch_testing(x, y, best_hyperparam):
     plt.ylabel("Loss")
     plt.title("Training and validation loss against number of epochs")
     plt.legend()
-<<<<<<< Updated upstream
+
     plt.show()
-=======
+
     plt.show()       
 
 def test_loss_per_epoch():
