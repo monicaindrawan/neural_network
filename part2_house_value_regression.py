@@ -435,8 +435,49 @@ def generate_graph_loss_against_nb_epoch_testing(x, y, best_hyperparam):
     plt.ylabel("Loss")
     plt.title("Training and validation loss against number of epochs")
     plt.legend()
+<<<<<<< Updated upstream
     plt.show()
+=======
+    plt.show()       
 
+def test_loss_per_epoch():
+    output_label = "median_house_value"
+>>>>>>> Stashed changes
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+    
+
+    # Splitting input and output
+
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 2, 'learning_rate': 0.005, 'nb_epoch': 200}
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
+    model = Regressor(x_train, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=best_hyperparam["activation_layer"], 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=best_hyperparam["learning_rate"],
+                        nb_epoch=best_hyperparam["nb_epoch"])
+
+    model.fit_and_compute_train_val_loss(x_train, y_train, x_val, y_val)
+        
+    train_loss_values = model.train_loss_per_epoch
+
+    val_loss_values = model.val_loss_per_epoch
+
+    nb_epoch_max = best_hyperparam["nb_epoch"]
+
+    plt.plot(list(range(1,nb_epoch_max+1)), train_loss_values, color="b", label="Training loss")
+    plt.plot(list(range(1,nb_epoch_max+1)), val_loss_values, color="r", label="Validation loss")
+    plt.xlabel("Number of epochs")
+    plt.ylabel("Loss")
+    plt.title("Training and validation loss against number of epochs")
+    plt.legend()
+    plt.show()
 
     
 
@@ -506,5 +547,6 @@ def test_pickle():
 
 
 if __name__ == "__main__":
-    example_main()
-    test_pickle()
+    #example_main()
+    #test_pickle()
+    test_loss_per_epoch()
