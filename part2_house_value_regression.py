@@ -439,6 +439,59 @@ def generate_graph_loss_against_nb_epoch_testing(x, y, best_hyperparam):
     plt.show()
 
     plt.show()       
+def generate_loss_against_activations(x, y, best_hyperparam):
+    """ Keeping other best hyperparameters constant while changing the activation layer type (ReLu vs Sigmoid)
+        Returns:
+        tuple: (Training loss using ReLU, training loss using Sigmoid, val loss using ReLu, val loss using Sigmoid)
+    """
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
+    train_loss_values = []
+    val_loss_values = []
+    relu_model = Regressor(x_train, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=torch.nn.ReLU(), 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=best_hyperparam["learning_rate"],
+                        nb_epoch=best_hyperparam["nb_epoch"])
+    relu_model.fit(x_train, y_train)
+    sigmoid_model = Regressor(x_train, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=torch.nn.Sigmoid(), 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=best_hyperparam["learning_rate"],
+                        nb_epoch=best_hyperparam["nb_epoch"])
+    sigmoid_model.fit(x_train, y_train)
+    train_loss_values = [relu_model.score(x_train, y_train), sigmoid_model.score(x_train, y_train)]
+    val_loss_values = [relu_model.score(x_val, y_val), sigmoid_model.score(x_val, y_val)]
+    return (relu_model.score(x_train, y_train), sigmoid_model.score(x_train, y_train), 
+            relu_model.score(x_val, y_val), sigmoid_model.score(x_val, y_val))
+
+def generate_loss_against_learning_rate(x, y, best_hyperparam):
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
+    train_loss_values = []
+    val_loss_values = []
+
+    for lr in np.arange(0.001, 0.1, 0.005):
+        model = Regressor(x_train, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=best_hyperparam["activation_layer"], 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=lr,
+                        nb_epoch=50)
+        model.fit(x_train, y_train)
+        train_loss = model.score(x_train, y_train)
+        train_loss_values.append(train_loss)
+        val_loss = model.score(x_val, y_val)
+        val_loss_values.append(val_loss)
+
+    plt.plot(list(np.arange(0.001, 0.1, 0.005)), train_loss_values, color="b", label="Training loss")
+    plt.plot(list(np.arange(0.001, 0.1, 0.005)), val_loss_values, color="r", label="Validation loss")
+    plt.xlabel("Learning rate")
+    plt.ylabel("Loss")
+    plt.title("Training and validation loss against learning rate")
+    plt.legend()
+    plt.show()
+
 
 def test_loss_per_epoch():
     output_label = "median_house_value"
@@ -478,7 +531,44 @@ def test_loss_per_epoch():
     plt.legend()
     plt.show()
 
-def test_activation_cahnge():
+def test_loss_per_activation():
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+    
+
+    # Splitting input and output
+
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.005, 'nb_epoch': 200}
+    
+    losses = generate_loss_against_activations(x, y, best_hyperparam)
+    print(losses)
+
+def test_loss_per_learning_rate():
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+    
+
+    # Splitting input and output
+
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.005, 'nb_epoch': 200}
+    #best_hyperparam = {'activation_layer': torch.nn.Sigmoid(), 'hidden_size': 256, 'num_hidden_layers': 2, 'learning_rate': 0.01, 'nb_epoch': 200}
+    generate_loss_against_learning_rate(x, y, best_hyperparam)
+
+
+
+def test_learning_rate_change():
     output_label = "median_house_value"
 
     # Use pandas to read CSV data as it contains various object types
@@ -511,9 +601,9 @@ def test_activation_cahnge():
 
     plt.plot(learning_rates, train_loss_list, color="b", label="Training loss")
     plt.plot(learning_rates, test_loss_list, color="r", label="Validation loss")
-    plt.xlabel("Activation number")
+    plt.xlabel("Learning rate")
     plt.ylabel("Loss")
-    plt.title("Training and validation loss against activation cahnge")
+    plt.title("Training and validation loss against learning rate change")
     plt.legend()
     plt.show()
 
@@ -586,4 +676,5 @@ if __name__ == "__main__":
     #example_main()
     #test_pickle()
     #test_loss_per_epoch()
-    test_activation_cahnge()
+    test_loss_per_learning_rate()
+    #test_learning_rate_change()
