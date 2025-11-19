@@ -11,7 +11,7 @@ torch.manual_seed(0)
 np.random.seed(0)
 class Regressor(torch.nn.Module):
 
-    def __init__(self, x, nb_epoch = 100, hidden_size=128, activation=torch.nn.ReLU(), num_hidden_layers=1, lr=0.01):
+    def __init__(self, x, nb_epoch = 100, hidden_size=128, activation=torch.nn.ReLU(), num_hidden_layers=1, dropout_rate=0.01, lr=0.01):
         # You can add any input parameters you need
         # Remember to set them with a default value for LabTS tests
         """ 
@@ -39,6 +39,7 @@ class Regressor(torch.nn.Module):
         self.nb_epoch = nb_epoch
         self.lr = lr
         self.num_hidden_layers = num_hidden_layers
+        self.dropout_rate = dropout_rate
  
         self.input_layer = torch.nn.Linear(self.input_size, self.hidden_size)
         self.hidden_layers = torch.nn.ModuleList()
@@ -48,7 +49,7 @@ class Regressor(torch.nn.Module):
 
         self.output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
         self.activation_layer = activation
-        self.dropout_layer = torch.nn.Dropout(0.05)
+        self.dropout_layer = torch.nn.Dropout(self.dropout_rate)
         
         self.train_loss_per_epoch = []
         self.val_loss_per_epoch = []
@@ -128,9 +129,9 @@ class Regressor(torch.nn.Module):
     def forward(self, x):
         # x = self.activation_layer(self.input_layer(x))
         x = self.input_layer(x)
-        x = self.dropout_layer(x)
         for layer in self.hidden_layers:
             x = self.activation_layer(layer(x))
+            x = self.dropout_layer(x)
         # x = self.activation_layer(self.output_layer(x))
         x = self.output_layer(x)
         return x
@@ -388,29 +389,33 @@ def perform_hyperparameter_search(x, y, hyperparams):
             for num_hidden_layers in hyperparams["num_hidden_layers"]:
                 for activation in hyperparams["activation_layer"]:
                     for hidden_size in hyperparams["hidden_size"]:
-                        model = Regressor(x_train, 
-                                        hidden_size=hidden_size, 
-                                        activation=activation, 
-                                        num_hidden_layers=num_hidden_layers,
-                                        lr=learning_rate,
-                                        nb_epoch=nb_epoch)
-                        
-                        model.fit(x_train, y_train)
-                        loss = model.score(x_val, y_val)
-                        if loss < least_loss:
-                            least_loss = loss
-                            best_hyperparam = {"activation_layer": activation, 
-                                            "hidden_size": hidden_size, 
-                                            "num_hidden_layers": num_hidden_layers,
-                                            "learning_rate": learning_rate,
-                                            "nb_epoch": nb_epoch}
-                            best_model = model
+                        for dropout_rate in hyperparams["dropout_rate"]:
+                            model = Regressor(x_train, 
+                                            hidden_size=hidden_size, 
+                                            activation=activation, 
+                                            num_hidden_layers=num_hidden_layers,
+                                            dropout_rate=dropout_rate,
+                                            lr=learning_rate,
+                                            nb_epoch=nb_epoch)
+                            
+                            model.fit(x_train, y_train)
+                            loss = model.score(x_val, y_val)
+                            if loss < least_loss:
+                                least_loss = loss
+                                best_hyperparam = {"activation_layer": activation, 
+                                                "hidden_size": hidden_size, 
+                                                "num_hidden_layers": num_hidden_layers,
+                                                "learning_rate": learning_rate,
+                                                "dropout_rate": dropout_rate,
+                                                "nb_epoch": nb_epoch}
+                                best_model = model
 
     #retrain the model on the full dataset using the best_model hyperparameters           
     best_model = Regressor(x, 
                         hidden_size=best_hyperparam["hidden_size"], 
                         activation=best_hyperparam["activation_layer"], 
                         num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        dropout_rate=best_hyperparam["dropout_rate"],
                         lr=best_hyperparam["learning_rate"],
                         nb_epoch=best_hyperparam["nb_epoch"])
     best_model.fit(x, y)
@@ -605,11 +610,12 @@ def example_main():
     #                "learning_rate": [0.02],
     #                "nb_epoch": [1000]}
     
-    hyperparams = {"activation_layer": [torch.nn.ReLU(), torch.nn.Sigmoid()],
+    hyperparams = {"activation_layer": [torch.nn.ReLU()],
                    "hidden_size": [128, 256],
                    "num_hidden_layers": [3, 4],
+                   "dropout_rate": [0.005, 0.01, 0.02],
                    "learning_rate": [0.02, 0.05],
-                   "nb_epoch": [500, 1000]}
+                   "nb_epoch": [500]}
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
     # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.01, 'nb_epoch': 200}
