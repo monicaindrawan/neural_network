@@ -7,6 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
+
+
 torch.manual_seed(0)
 np.random.seed(0)
 class Regressor(torch.nn.Module):
@@ -43,13 +45,15 @@ class Regressor(torch.nn.Module):
  
         self.input_layer = torch.nn.Linear(self.input_size, self.hidden_size)
         self.hidden_layers = torch.nn.ModuleList()
-        
-        for layer in range(self.num_hidden_layers):
-            self.hidden_layers.append(torch.nn.Linear(self.hidden_size, self.hidden_size))
 
         self.output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
         self.activation_layer = activation
         self.dropout_layer = torch.nn.Dropout(self.dropout_rate)
+        
+        for layer in range(self.num_hidden_layers):
+            self.hidden_layers.append(torch.nn.Linear(self.hidden_size, self.hidden_size))
+            self.hidden_layers.append(self.activation_layer)
+            self.hidden_layers.append(self.dropout_layer)
         
         self.train_loss_per_epoch = []
         self.val_loss_per_epoch = []
@@ -130,8 +134,9 @@ class Regressor(torch.nn.Module):
         # x = self.activation_layer(self.input_layer(x))
         x = self.input_layer(x)
         for layer in self.hidden_layers:
-            x = self.activation_layer(layer(x))
-            x = self.dropout_layer(x)
+            x = layer(x)
+            # x = self.activation_layer(layer(x))
+            # x = self.dropout_layer(x)
         # x = self.activation_layer(self.output_layer(x))
         x = self.output_layer(x)
         return x
@@ -586,7 +591,6 @@ def example_main():
     y = data.loc[:, [output_label]]
     x_train, y_train, x_test, y_test = shuffle(x, y, 0.8)
 
-
     # Training
     # This example trains on the whole available dataset. 
     # You probably want to separate some held-out data 
@@ -604,18 +608,19 @@ def example_main():
     #                "num_hidden_layers": [3, 4],
     #                "learning_rate": [0.01],
     #                "nb_epoch": [200]}
-    # hyperparams = {"activation_layer": [torch.nn.ReLU()],
-    #                "hidden_size": [128],
-    #                "num_hidden_layers": [4],
-    #                "learning_rate": [0.02],
-    #                "nb_epoch": [1000]}
-    
     hyperparams = {"activation_layer": [torch.nn.ReLU()],
-                   "hidden_size": [128, 256],
-                   "num_hidden_layers": [3, 4],
-                   "dropout_rate": [0.005, 0.01, 0.02],
-                   "learning_rate": [0.02, 0.05],
-                   "nb_epoch": [500]}
+                   "hidden_size": [256],
+                   "num_hidden_layers": [4],
+                   "dropout_rate": [0.01],
+                   "learning_rate": [0.02],
+                   "nb_epoch": [1000]}
+    
+    # hyperparams = {"activation_layer": [torch.nn.ReLU()],
+    #                "hidden_size": [128, 256],
+    #                "num_hidden_layers": [3, 4],
+    #                "dropout_rate": [0.005, 0.01, 0.02],
+    #                "learning_rate": [0.02, 0.05],
+    #                "nb_epoch": [500]}
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
     # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.01, 'nb_epoch': 200}
