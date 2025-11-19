@@ -112,9 +112,9 @@ class Regressor(torch.nn.Module):
         if training:
             self.prep_input = Preprocessor(x)
             x = self.prep_input.apply(x)
-            # if y is not None:
-            #     self.prep_output = Preprocessor(y)
-            #     # y = self.prep_output.apply(y)
+            if y is not None:
+                self.prep_output = Preprocessor(y)
+                y = self.prep_output.apply(y)
         else:
             x = self.prep_input.apply(x)
             
@@ -234,8 +234,7 @@ class Regressor(torch.nn.Module):
         with torch.inference_mode():
             Y_pred = self.forward(X)
 
-        return Y_pred
-        # return self.prep_output.revert(Y_pred.numpy())
+        return self.prep_output.revert(Y_pred.numpy())
     
 
         #######################################################################
@@ -263,10 +262,10 @@ class Regressor(torch.nn.Module):
         X, Y = self._preprocessor(x, y = y, training = False) # Do not forget
         with torch.inference_mode():
             Y_pred = self.forward(X)
-        # Y_pred = self.prep_output.revert(Y_pred.numpy())
+        Y_pred = self.prep_output.revert(Y_pred.numpy())
 
         MSE = torch.nn.MSELoss()
-        loss = MSE(Y_pred, Y)
+        loss = MSE(torch.tensor(Y_pred), torch.tensor(Y))
         
         return torch.sqrt(loss).item()
         #######################################################################
@@ -291,25 +290,28 @@ class Regressor(torch.nn.Module):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        X, Y = self._preprocessor(x, y = y, training = False) 
+        X, Y_tensor = self._preprocessor(x, y=y, training=False)
+        
         with torch.inference_mode():
-            Y_pred = self.forward(X)
-        # Y_pred = self.prep_output.revert(Y_pred.numpy())
+            Y_pred_tensor = self.forward(X)
+
+        Y_pred_numpy = Y_pred_tensor.cpu().numpy()
+        Y_numpy = Y_tensor.cpu().numpy()
+
+        Y_pred_true = self.prep_output.revert(Y_pred_numpy)
+        Y_true = self.prep_output.revert(Y_numpy)
 
         metrics = {}
+        
+        # RMSE
+        mse = np.mean((Y_pred_true - Y_true) ** 2)
+        metrics['rmse'] = np.sqrt(mse)
 
-        RMSE = torch.nn.MSELoss()
-        rmse_loss = torch.sqrt(RMSE(Y_pred, Y)).item()
-        metrics['rmse'] = rmse_loss
-
-        MAE = torch.nn.L1Loss() 
-        mae_error = MAE(Y_pred, Y).item()
-        metrics['mae_error'] = mae_error
-    
-        y_true = Y.detach().view(-1).cpu().numpy()
-        y_pred = Y_pred.detach().view(-1).cpu().numpy()
-        R2_score = r2_score(y_true, y_pred)
-        metrics['r2_error'] = R2_score
+        # MAE
+        metrics['mae_error'] = np.mean(np.abs(Y_pred_true - Y_true))
+        
+        # R2 (Flatten arrays to ensure 1D shape for scikit-learn)
+        metrics['r2_score'] = r2_score(Y_true.flatten(), Y_pred_true.flatten())
             
         return metrics
 
