@@ -498,6 +498,59 @@ def generate_loss_against_learning_rate(x, y, best_hyperparam):
     plt.legend()
     plt.show()
 
+def generate_loss_against_hidden_layers(x, y, best_hyperparam):
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
+    train_loss_values = []
+    val_loss_values = []
+
+    for num_hidden_layers in range(1,5):
+        model = Regressor(x_train, 
+                        hidden_size=best_hyperparam["hidden_size"], 
+                        activation=best_hyperparam["activation_layer"], 
+                        num_hidden_layers=num_hidden_layers,
+                        lr=best_hyperparam["learning_rate"],
+                        nb_epoch=best_hyperparam["nb_epoch"])
+        model.fit(x_train, y_train)
+        train_loss = model.score(x_train, y_train)
+        train_loss_values.append(train_loss)
+        val_loss = model.score(x_val, y_val)
+        val_loss_values.append(val_loss)
+
+    plt.plot(list(range(1,5)), train_loss_values, color="b", label="Training loss")
+    plt.plot(list(range(1,5)), val_loss_values, color="r", label="Validation loss")
+    plt.xlabel("Number of hidden layers")
+    plt.ylabel("Loss")
+    plt.title("Training and validation loss against hidden layers")
+    plt.xticks([1, 2, 3, 4])
+    plt.legend()
+    plt.show()
+
+def generate_loss_against_hidden_size(x, y, best_hyperparam):
+    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
+    train_loss_values = []
+    val_loss_values = []
+    size = [64, 128, 256, 512]
+    for hidden_size in size:
+        model = Regressor(x_train, 
+                        hidden_size=hidden_size, 
+                        activation=best_hyperparam["activation_layer"], 
+                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
+                        lr=best_hyperparam["learning_rate"],
+                        nb_epoch=best_hyperparam["nb_epoch"])
+        model.fit(x_train, y_train)
+        train_loss = model.score(x_train, y_train)
+        train_loss_values.append(train_loss)
+        val_loss = model.score(x_val, y_val)
+        val_loss_values.append(val_loss)
+
+    plt.plot(size, train_loss_values, color="b", label="Training loss")
+    plt.plot(size, val_loss_values, color="r", label="Validation loss")
+    plt.xlabel("Number of neurons in a hidden layer")
+    plt.ylabel("Loss")
+    plt.title("Training and validation loss against neurons")
+    plt.legend()
+    plt.show()
+
 
 def test_loss_per_epoch():
     output_label = "median_house_value"
@@ -574,6 +627,39 @@ def test_loss_per_learning_rate():
 
 
 
+def test_loss_per_hidden_layers():
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+    
+
+    # Splitting input and output
+
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.04, 'nb_epoch': 1000}
+    #best_hyperparam = {'activation_layer': torch.nn.Sigmoid(), 'hidden_size': 256, 'num_hidden_layers': 2, 'learning_rate': 0.01, 'nb_epoch': 200}
+    generate_loss_against_hidden_layers(x, y, best_hyperparam)
+
+def test_loss_per_hidden_size():
+    output_label = "median_house_value"
+
+    # Use pandas to read CSV data as it contains various object types
+    # Feel free to use another CSV reader tool
+    # But remember that LabTS tests take Pandas DataFrame as inputs
+    data = pd.read_csv("housing.csv") 
+    
+
+    # Splitting input and output
+
+    x = data.loc[:, data.columns != output_label]
+    y = data.loc[:, [output_label]]
+    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.04, 'nb_epoch': 1000}
+    #best_hyperparam = {'activation_layer': torch.nn.Sigmoid(), 'hidden_size': 256, 'num_hidden_layers': 2, 'learning_rate': 0.01, 'nb_epoch': 200}
+    generate_loss_against_hidden_size(x, y, best_hyperparam)
 
 
 def example_main():
