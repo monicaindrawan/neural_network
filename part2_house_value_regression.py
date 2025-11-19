@@ -45,15 +45,13 @@ class Regressor(torch.nn.Module):
  
         self.input_layer = torch.nn.Linear(self.input_size, self.hidden_size)
         self.hidden_layers = torch.nn.ModuleList()
-
         self.output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
-        self.activation_layer = activation
-        self.dropout_layer = torch.nn.Dropout(self.dropout_rate)
+
         
-        for layer in range(self.num_hidden_layers):
+        for n in range(self.num_hidden_layers):
             self.hidden_layers.append(torch.nn.Linear(self.hidden_size, self.hidden_size))
-            self.hidden_layers.append(self.activation_layer)
-            self.hidden_layers.append(self.dropout_layer)
+            self.hidden_layers.append(type(activation)()) 
+            self.hidden_layers.append(torch.nn.Dropout(self.dropout_rate))
         
         self.train_loss_per_epoch = []
         self.val_loss_per_epoch = []
