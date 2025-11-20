@@ -129,47 +129,13 @@ class Regressor(torch.nn.Module):
         #######################################################################
 
     def forward(self, x):
-        # x = self.activation_layer(self.input_layer(x))
         x = self.input_layer(x)
         for layer in self.hidden_layers:
             x = layer(x)
-            # x = self.activation_layer(layer(x))
-            # x = self.dropout_layer(x)
-        # x = self.activation_layer(self.output_layer(x))
         x = self.output_layer(x)
         return x
 
     
-    def fit_and_compute_train_val_loss(self, x_train, y_train, x_val, y_val):
-        """ Helper function to train the model on training data, then compute and store the loss on 
-            the training and validation data for each epoch.
-            Used for plotting training and testing loss against parameter.
-        """
-        self.loss_function = torch.nn.MSELoss()
-        self.optimiser = torch.optim.Adam(self.parameters(), lr=self.lr)
-        self.train_loss_per_epoch = []
-        self.val_loss_per_epoch = []
-
-        X, Y = self._preprocessor(x_train, y = y_train, training = True) # Do not forget
-        
-        for epoch in range(self.nb_epoch):            
-            self.optimiser.zero_grad()
-            Y_pred = self.forward(X)
-            loss = self.loss_function(Y_pred, Y)
-            loss.backward()
-            self.optimiser.step()
-            
-            train_loss = torch.sqrt(loss).item()
-            self.train_loss_per_epoch.append(train_loss)
-
-            
-            val_loss = self.score(x_val, y_val)
-            self.val_loss_per_epoch.append(val_loss)
-            print(f"Epoch: {epoch+1}/{self.nb_epoch}, Train Loss: {train_loss}, Val loss: {val_loss}")
-
-        print("Training Completed", end='\r')
-        
-        return self
     
 
     def fit(self, x, y):
@@ -373,7 +339,7 @@ def perform_hyperparameter_search(x, y, hyperparams):
                                       of a list of parameters to evaluate over.
         
     Returns:
-        dict : {activation layer, neurons in hidden layer, number of hidden layers, learning rate, number of epochs, dropout rate}
+        dict : {activation layer, neurons in hidden layer, number of hidden layers, learning rate}
                 Dictionary containing parameters of best model.
 
     """
@@ -386,8 +352,7 @@ def perform_hyperparameter_search(x, y, hyperparams):
     x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
 
     least_loss = float("inf")
-
-    # Loop over all parameters.
+    
     for nb_epoch in hyperparams["nb_epoch"]:
         for learning_rate in hyperparams["learning_rate"]:
             for num_hidden_layers in hyperparams["num_hidden_layers"]:
@@ -443,241 +408,7 @@ def perform_hyperparameter_search(x, y, hyperparams):
 
 
 
-    
-def generate_loss_against_activations(x, y, best_hyperparam):
-    """ Keeping best hyperparameters constant while changing the activation layer type (ReLu vs Sigmoid)
 
-    Arguments:
-        - x {pd.DataFrame} -- Raw input array of shape 
-                (batch_size, input_size).
-        - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
-        - hyperparams (dict[list]) -- Dictionary containing best hyperparameters with each key having an associated value
-                                      of parameter.
-    Returns:
-        tuple: (Training loss using ReLU, training loss using Sigmoid, val loss using ReLu, val loss using Sigmoid)
-    """
-    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
-    train_loss_values = []
-    val_loss_values = []
-    relu_model = Regressor(x_train, 
-                        hidden_size=best_hyperparam["hidden_size"], 
-                        activation=torch.nn.ReLU(), 
-                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
-                        lr=best_hyperparam["learning_rate"],
-                        nb_epoch=best_hyperparam["nb_epoch"])
-    relu_model.fit(x_train, y_train)
-    sigmoid_model = Regressor(x_train, 
-                        hidden_size=best_hyperparam["hidden_size"], 
-                        activation=torch.nn.Sigmoid(), 
-                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
-                        lr=best_hyperparam["learning_rate"],
-                        nb_epoch=best_hyperparam["nb_epoch"])
-    sigmoid_model.fit(x_train, y_train)
-    train_loss_values = [relu_model.score(x_train, y_train), sigmoid_model.score(x_train, y_train)]
-    val_loss_values = [relu_model.score(x_val, y_val), sigmoid_model.score(x_val, y_val)]
-    return (relu_model.score(x_train, y_train), sigmoid_model.score(x_train, y_train), 
-            relu_model.score(x_val, y_val), sigmoid_model.score(x_val, y_val))
-
-def generate_loss_against_learning_rate(x, y, best_hyperparam):
-    """ Generates graph of loss against learning rate
-
-    Arguments:
-        - x {pd.DataFrame} -- Raw input array of shape 
-                (batch_size, input_size).
-        - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
-        - hyperparams (dict[list]) -- Dictionary containing best hyperparameters with each key having an associated value
-                                      of parameter.
-    """
-    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
-    train_loss_values = []
-    val_loss_values = []
-
-    for lr in np.arange(0.001, 0.1, 0.01):
-        model = Regressor(x_train, 
-                        hidden_size=best_hyperparam["hidden_size"], 
-                        activation=best_hyperparam["activation_layer"], 
-                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
-                        lr=lr,
-                        nb_epoch=best_hyperparam["nb_epoch"])
-        model.fit(x_train, y_train)
-        train_loss = model.score(x_train, y_train)
-        train_loss_values.append(train_loss)
-        val_loss = model.score(x_val, y_val)
-        val_loss_values.append(val_loss)
-
-    plt.plot(list(np.arange(0.001, 0.1, 0.01)), train_loss_values, color="b", label="Training loss")
-    plt.plot(list(np.arange(0.001, 0.1, 0.01)), val_loss_values, color="r", label="Validation loss")
-    plt.xlabel("Learning rate")
-    plt.ylabel("Loss")
-    plt.title("Training and validation loss against learning rate")
-    plt.legend()
-    plt.show()
-
-def generate_loss_against_hidden_layers(x, y, best_hyperparam):
-    """ Generates graph of loss against hidden layers
-
-    Arguments:
-        - x {pd.DataFrame} -- Raw input array of shape 
-                (batch_size, input_size).
-        - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
-        - hyperparams (dict[list]) -- Dictionary containing best hyperparameters with each key having an associated value
-                                      of parameter.
-    """
-    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
-    train_loss_values = []
-    val_loss_values = []
-
-    for num_hidden_layers in range(1,5):
-        model = Regressor(x_train, 
-                        hidden_size=best_hyperparam["hidden_size"], 
-                        activation=best_hyperparam["activation_layer"], 
-                        num_hidden_layers=num_hidden_layers,
-                        lr=best_hyperparam["learning_rate"],
-                        nb_epoch=best_hyperparam["nb_epoch"])
-        model.fit(x_train, y_train)
-        train_loss = model.score(x_train, y_train)
-        train_loss_values.append(train_loss)
-        val_loss = model.score(x_val, y_val)
-        val_loss_values.append(val_loss)
-
-    plt.plot(list(range(1,5)), train_loss_values, color="b", label="Training loss")
-    plt.plot(list(range(1,5)), val_loss_values, color="r", label="Validation loss")
-    plt.xlabel("Number of hidden layers")
-    plt.ylabel("Loss")
-    plt.title("Training and validation loss against hidden layers")
-    plt.xticks([1, 2, 3, 4])
-    plt.legend()
-    plt.show()
-
-def generate_loss_against_hidden_size(x, y, best_hyperparam):
-    """ Generates graph of loss against number on neurons in hidden layers
-
-    Arguments:
-        - x {pd.DataFrame} -- Raw input array of shape 
-                (batch_size, input_size).
-        - y {pd.DataFrame} -- Raw output array of shape (batch_size, 1).
-        - hyperparams (dict[list]) -- Dictionary containing best hyperparameters with each key having an associated value
-                                      of parameter.
-    """
-    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
-    train_loss_values = []
-    val_loss_values = []
-    size = [64, 128, 256, 512]
-    for hidden_size in size:
-        model = Regressor(x_train, 
-                        hidden_size=hidden_size, 
-                        activation=best_hyperparam["activation_layer"], 
-                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
-                        lr=best_hyperparam["learning_rate"],
-                        nb_epoch=best_hyperparam["nb_epoch"])
-        model.fit(x_train, y_train)
-        train_loss = model.score(x_train, y_train)
-        train_loss_values.append(train_loss)
-        val_loss = model.score(x_val, y_val)
-        val_loss_values.append(val_loss)
-
-    plt.plot(size, train_loss_values, color="b", label="Training loss")
-    plt.plot(size, val_loss_values, color="r", label="Validation loss")
-    plt.xlabel("Number of neurons in a hidden layer")
-    plt.ylabel("Loss")
-    plt.title("Training and validation loss against neurons")
-    plt.legend()
-    plt.show()
-
-
-def test_loss_per_epoch():
-    output_label = "median_house_value"
-
-    data = pd.read_csv("housing.csv") 
-    
-
-    # Splitting input and output
-
-    x = data.loc[:, data.columns != output_label]
-    y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 4, 'learning_rate': 0.02, 'nb_epoch': 1000}
-    x_train, y_train, x_val, y_val = shuffle(x, y, 0.8)
-    model = Regressor(x_train, 
-                        hidden_size=best_hyperparam["hidden_size"], 
-                        activation=best_hyperparam["activation_layer"], 
-                        num_hidden_layers=best_hyperparam["num_hidden_layers"],
-                        lr=best_hyperparam["learning_rate"],
-                        nb_epoch=best_hyperparam["nb_epoch"])
-
-    model.fit_and_compute_train_val_loss(x_train, y_train, x_val, y_val)
-        
-    train_loss_values = model.train_loss_per_epoch
-
-    val_loss_values = model.val_loss_per_epoch
-
-    nb_epoch_max = best_hyperparam["nb_epoch"]
-
-    plt.plot(list(range(1,nb_epoch_max+1)), train_loss_values, color="b", label="Training loss")
-    plt.plot(list(range(1,nb_epoch_max+1)), val_loss_values, color="r", label="Validation loss")
-    plt.xlabel("Number of epochs")
-    plt.ylabel("Loss")
-    plt.title("Training and validation loss against number of epochs")
-    plt.legend()
-    plt.show()
-
-def test_loss_per_activation():
-    output_label = "median_house_value"
-
-    data = pd.read_csv("housing.csv") 
-    
-
-    # Splitting input and output
-
-    x = data.loc[:, data.columns != output_label]
-    y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.02, 'nb_epoch': 1000}
-    
-    losses = generate_loss_against_activations(x, y, best_hyperparam)
-    print(losses)
-
-def test_loss_per_learning_rate():
-    output_label = "median_house_value"
-
-    data = pd.read_csv("housing.csv") 
-    
-
-    # Splitting input and output
-
-    x = data.loc[:, data.columns != output_label]
-    y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 4, 'learning_rate': 0.02, 'nb_epoch': 1000}
-    #best_hyperparam = {'activation_layer': torch.nn.Sigmoid(), 'hidden_size': 256, 'num_hidden_layers': 2, 'learning_rate': 0.01, 'nb_epoch': 200}
-    generate_loss_against_learning_rate(x, y, best_hyperparam)
-
-
-
-def test_loss_per_hidden_layers():
-    output_label = "median_house_value"
-
-    data = pd.read_csv("housing.csv") 
-    
-
-    # Splitting input and output
-
-    x = data.loc[:, data.columns != output_label]
-    y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.04, 'nb_epoch': 1000}
-    #best_hyperparam = {'activation_layer': torch.nn.Sigmoid(), 'hidden_size': 256, 'num_hidden_layers': 2, 'learning_rate': 0.01, 'nb_epoch': 200}
-    generate_loss_against_hidden_layers(x, y, best_hyperparam)
-
-def test_loss_per_hidden_size():
-    output_label = "median_house_value"
-
-    data = pd.read_csv("housing.csv") 
-    
-
-    # Splitting input and output
-
-    x = data.loc[:, data.columns != output_label]
-    y = data.loc[:, [output_label]]
-    best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.04, 'nb_epoch': 1000}
-    #best_hyperparam = {'activation_layer': torch.nn.Sigmoid(), 'hidden_size': 256, 'num_hidden_layers': 2, 'learning_rate': 0.01, 'nb_epoch': 200}
-    generate_loss_against_hidden_size(x, y, best_hyperparam)
 
 
 def example_main():
@@ -690,11 +421,15 @@ def example_main():
     
 
     # Splitting input and output
+
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
     x_train, y_train, x_test, y_test = shuffle(x, y, 0.8)
 
     # Training
+    # This example trains on the whole available dataset. 
+    # You probably want to separate some held-out data 
+    # to make sure the model isn't overfitting
     regressor = Regressor(x_train, nb_epoch = 10)
     regressor.fit(x_train, y_train)
     save_regressor(regressor)
@@ -702,18 +437,20 @@ def example_main():
     # Error
     error = regressor.score(x_train, y_train)
     print(f"\nRegressor error: {error}\n")
-    
+
+  
     hyperparams = {"activation_layer": [torch.nn.ReLU()],
-                   "hidden_size": [128],
-                   "num_hidden_layers": [4],
+                   "hidden_size": [64, 128, 256],
+                   "num_hidden_layers": [2, 3, 4],
                    "dropout_rate": [0.01],
                    "learning_rate": [0.01],
-                   "nb_epoch": [10]}
+                   "nb_epoch": [1000]}
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
-    # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.01, 'nb_epoch': 200}
-    # generate_graph_loss_against_nb_epoch(x, y, best_hyperparam)
     print(best_hyperparam)
+    
+
+    
 
 
 def test_pickle():
@@ -725,6 +462,8 @@ def test_pickle():
     data = pd.read_csv("housing.csv") 
 
     # Splitting input and output
+
+
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
 
@@ -737,8 +476,6 @@ def test_pickle():
 
 
 if __name__ == "__main__":
-    #example_main()
+    example_main()
     test_pickle()
-    #test_loss_per_epoch()
-    #test_loss_per_learning_rate()
-    #test_loss_per_activation()
+    
