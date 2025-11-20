@@ -422,8 +422,7 @@ def example_main():
     # Splitting input and output
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
-    x_trainval, y_trainval, x_test, y_test = shuffle(x, y, 0.8)
-    x_train, y_train, x_val, y_val = shuffle(x_trainval, y_trainval, 0.8)
+    x_train, y_train, x_test, y_test = shuffle(x, y, 0.8)
 
     # Can add extra values to hyperparams list for dropout, learning rate, and num_epochs 
     # but only the best values are shown in those parameters as otherwise will take a long
