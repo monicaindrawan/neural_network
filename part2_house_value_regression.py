@@ -410,7 +410,6 @@ def perform_hyperparameter_search(x, y, hyperparams):
 
 
 
-
 def example_main():
     output_label = "median_house_value"
 
@@ -421,24 +420,14 @@ def example_main():
     
 
     # Splitting input and output
-
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
-    x_train, y_train, x_test, y_test = shuffle(x, y, 0.8)
+    x_trainval, y_trainval, x_test, y_test = shuffle(x, y, 0.8)
+    x_train, y_train, x_val, y_val = shuffle(x_trainval, y_trainval, 0.8)
 
-    # Training
-    # This example trains on the whole available dataset. 
-    # You probably want to separate some held-out data 
-    # to make sure the model isn't overfitting
-    regressor = Regressor(x_train, nb_epoch = 10)
-    regressor.fit(x_train, y_train)
-    save_regressor(regressor)
-
-    # Error
-    error = regressor.score(x_train, y_train)
-    print(f"\nRegressor error: {error}\n")
-
-  
+    # Can add extra values to hyperparams list for dropout, learning rate, and num_epochs 
+    # but only the best values are shown in those parameters as otherwise will take a long
+    # time to run.
     hyperparams = {"activation_layer": [torch.nn.ReLU()],
                    "hidden_size": [64, 128, 256],
                    "num_hidden_layers": [2, 3, 4],
@@ -448,12 +437,16 @@ def example_main():
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
     print(best_hyperparam)
-    
 
-    
+    trained_model = load_regressor()
+    error = trained_model.evaluation(x_test, y_test)
 
 
 def test_pickle():
+    """ Test pickle file is working. 
+        This function should not be used for final accuracy/evaluation as data leakage may occur.
+        Only to test pickle file model works!
+    """
     output_label = "median_house_value"
 
     # Use pandas to read CSV data as it contains various object types
@@ -462,8 +455,6 @@ def test_pickle():
     data = pd.read_csv("housing.csv") 
 
     # Splitting input and output
-
-
     x = data.loc[:, data.columns != output_label]
     y = data.loc[:, [output_label]]
 
@@ -477,5 +468,5 @@ def test_pickle():
 
 if __name__ == "__main__":
     example_main()
-    test_pickle()
+    #test_pickle()
     
