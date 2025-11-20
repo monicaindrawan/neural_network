@@ -39,7 +39,7 @@ To find a model with the optimal hyperparameter settings, run the function:
 perform_hyperparameter_search(x, y, hyperparams)
 ```
 
-Where x, y is the training data and hyperparams is a dictionary of hyperparameters to grid search over with keys: {activation layer, neurons in hidden layer, number of hidden layers, learning rate}. This function will then save a pickle file containing the best model. To load the pickle model, run 
+Where x, y is the training data and hyperparams is a dictionary of hyperparameters to grid search over with keys: {activation layer, neurons in hidden layer, number of hidden layers, learning rate, number of epochs, dropout rate}. This function will then save a pickle file containing the best model. To load the pickle model, run 
 ```python
 trained_model = load_regressor()
 ```

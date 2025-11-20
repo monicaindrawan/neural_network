@@ -373,7 +373,7 @@ def perform_hyperparameter_search(x, y, hyperparams):
                                       of a list of parameters to evaluate over.
         
     Returns:
-        dict : {activation layer, neurons in hidden layer, number of hidden layers, learning rate}
+        dict : {activation layer, neurons in hidden layer, number of hidden layers, learning rate, number of epochs, dropout rate}
                 Dictionary containing parameters of best model.
 
     """
