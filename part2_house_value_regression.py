@@ -290,28 +290,26 @@ class Regressor(torch.nn.Module):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        X, Y_tensor = self._preprocessor(x, y=y, training=False)
-        
+        X, Y = self._preprocessor(x, y = y, training = False) 
         with torch.inference_mode():
-            Y_pred_tensor = self.forward(X)
-
-        Y_pred_numpy = Y_pred_tensor.cpu().numpy()
-        Y_numpy = Y_tensor.cpu().numpy()
-
-        Y_pred_true = self.prep_output.revert(Y_pred_numpy)
-        Y_true = self.prep_output.revert(Y_numpy)
-
+            Y_pred = self.forward(X)
+        Y_pred = self.prep_output.revert(Y_pred.numpy())
+        Y_pred = torch.tensor(Y_pred)
+        
         metrics = {}
-        
-        # RMSE
-        mse = np.mean((Y_pred_true - Y_true) ** 2)
-        metrics['rmse'] = np.sqrt(mse)
 
-        # MAE
-        metrics['mae_error'] = np.mean(np.abs(Y_pred_true - Y_true))
-        
-        # R2 (Flatten arrays to ensure 1D shape for scikit-learn)
-        metrics['r2_score'] = r2_score(Y_true.flatten(), Y_pred_true.flatten())
+        RMSE = torch.nn.MSELoss()
+        rmse_loss = torch.sqrt(RMSE(Y_pred, Y)).item()
+        metrics['rmse'] = rmse_loss
+
+        MAE = torch.nn.L1Loss() 
+        mae_error = MAE(Y_pred, Y).item()
+        metrics['mae_error'] = mae_error
+    
+        y_true = Y.detach().view(-1).cpu().numpy()
+        y_pred = Y_pred.detach().view(-1).cpu().numpy()
+        R2_score = r2_score(y_true, y_pred)
+        metrics['r2_error'] = R2_score
             
         return metrics
 
@@ -694,19 +692,19 @@ def example_main():
     #                "num_hidden_layers": [3, 4],
     #                "learning_rate": [0.01],
     #                "nb_epoch": [200]}
-    hyperparams = {"activation_layer": [torch.nn.ReLU()],
-                   "hidden_size": [256],
-                   "num_hidden_layers": [4],
-                   "dropout_rate": [0.01],
-                   "learning_rate": [0.02],
-                   "nb_epoch": [1000]}
-    
     # hyperparams = {"activation_layer": [torch.nn.ReLU()],
     #                "hidden_size": [128, 256],
     #                "num_hidden_layers": [3, 4],
-    #                "dropout_rate": [0.005, 0.01, 0.02],
-    #                "learning_rate": [0.02, 0.05],
-    #                "nb_epoch": [500]}
+    #                "dropout_rate": [0.01],
+    #                "learning_rate": [0.01],
+    #                "nb_epoch": [300]}
+    
+    hyperparams = {"activation_layer": [torch.nn.ReLU()],
+                   "hidden_size": [128],
+                   "num_hidden_layers": [4],
+                   "dropout_rate": [0.01],
+                   "learning_rate": [0.01],
+                   "nb_epoch": [10]}
     
     best_hyperparam = perform_hyperparameter_search(x_train, y_train, hyperparams)
     # best_hyperparam = {'activation_layer': torch.nn.ReLU(), 'hidden_size': 128, 'num_hidden_layers': 3, 'learning_rate': 0.01, 'nb_epoch': 200}
@@ -743,5 +741,5 @@ if __name__ == "__main__":
     example_main()
     #test_pickle()
     #test_loss_per_epoch()
-    #test_loss_per_learning_rate()
+    # test_loss_per_learning_rate()
     #test_loss_per_activation()
